@@ -12,6 +12,7 @@
 #include "demo_behaviors/behaviors/detect_and_sort_queue.hpp"
 #include "demo_behaviors/behaviors/is_queue_not_empty.hpp"
 #include "demo_behaviors/behaviors/sample_view_poses_helix.hpp"
+#include "demo_behaviors/behaviors/sample_view_poses_cone.hpp"
 #include "demo_behaviors/behaviors/dubins_client.hpp"
 #include "demo_behaviors/behaviors/path_length_client.hpp"
 #include "demo_behaviors/behaviors/mark_target_complete.hpp"
@@ -75,6 +76,7 @@ int main(int argc, char **argv)
   factory.registerNodeType<DetectAndSortQueue>("DetectAndSortQueue", node);
   factory.registerNodeType<isQueueNotEmpty>("isQueueNotEmpty");
   factory.registerNodeType<SampleViewPosesHelix>("SampleViewPosesHelix", node);
+  factory.registerNodeType<SampleViewPosesCone>("SampleViewPosesCone", node);
   factory.registerNodeType<DubinsClient>("DubinsClient", node);
   factory.registerNodeType<PathLengthClient>("PathLengthClient", node);
   factory.registerNodeType<MarkTargetComplete>("MarkTargetComplete");

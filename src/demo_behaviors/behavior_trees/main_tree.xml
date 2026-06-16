@@ -7,8 +7,10 @@
         <CheckForServers timeout="10" servers="
             /pose_to_pose/_action/send_goal"/>
 
-        <!-- Viewpoint Sampler -->
-        <CheckForServers timeout="10" servers="/generate_helix"/>
+        <!-- Viewpoint Samplers (helix + cone; both launch, tree selects one) -->
+        <CheckForServers timeout="10" servers="
+            /generate_helix
+            /generate_cone"/>
 
         <!-- Next Best View -->
         <CheckForServers timeout="10" servers="

@@ -1,0 +1,7 @@
+int32 num_rings           # z-levels, uniform linspace(clearance, cone_height)
+float64 clearance         # z lower bound
+float64 cone_height       # z upper bound
+float64 delta_theta_deg   # angular samples per ring
+float64 mount_angle_deg   # r = z/tan(mount_angle); cone half-angle
+---
+geometry_msgs/PoseArray poses

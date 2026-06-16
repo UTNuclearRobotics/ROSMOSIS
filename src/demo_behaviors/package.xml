@@ -24,7 +24,7 @@
 
   <!-- Runtime-only deps for launch file (not built against, but launched) -->
   <exec_depend>vista_sim</exec_depend>
-  <exec_depend>helix_generator</exec_depend>
+  <exec_depend>pose_generator</exec_depend>
   <exec_depend>nbv_cpp</exec_depend>
   <exec_depend>sensor_model</exec_depend>
 

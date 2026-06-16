@@ -29,7 +29,10 @@ find_package(nrg_utility_behaviors REQUIRED)
 
 # Main executable
 
-file(GLOB BEHAVIOR_SOURCES src/behaviors/*.cpp)
+# CONFIGURE_DEPENDS makes CMake re-check this glob on every build, so newly
+# added behavior .cpp files are picked up without manually re-running configure
+# (a fresh build/ wipe). Without it, adding a file silently leaves it unlinked.
+file(GLOB BEHAVIOR_SOURCES CONFIGURE_DEPENDS src/behaviors/*.cpp)
 
 add_executable(run_bt
   src/run_bt.cpp

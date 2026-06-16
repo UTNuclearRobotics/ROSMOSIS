@@ -22,6 +22,7 @@ set(srv_files
   "srv/GenerateHelix.srv"
   "srv/BayesianSearch.srv"
   "srv/DubinsLengths.srv"
+  "srv/GenerateCone.srv"
 )
 
 # Add message files

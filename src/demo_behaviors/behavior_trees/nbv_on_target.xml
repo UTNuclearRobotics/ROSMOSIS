@@ -13,7 +13,11 @@
             <!-- Initialize NBV solver for this target -->
             <ActivatePolicy roi_center="{current_pose}" roi_extents="{roi_extents}"/>
 
-            <!-- Sample candidate viewpoints on helix manifold around target (custom) -->
+            <!-- Helix-manifold sampler (alternative baseline). To run the helix
+                 instead of the cone: comment out the SampleViewPosesCone block
+                 below and uncomment this one. Both write to {poses}, so nothing
+                 downstream changes. -->
+            <!--
             <SampleViewPosesHelix
                 clearance_height="5"
                 helix_height="10"
@@ -25,6 +29,22 @@
                 mount_angle_deg="20"
                 view_poses="{poses}"
             />
+            -->
+
+            <!-- Sample candidate viewpoints on cone manifold around target (custom).
+                 r = z/tan(mount_angle); rings span [clearance, cone_height];
+                 pitch is handled by the path planner, not the sampler. -->
+            
+            
+            <SampleViewPosesCone
+                num_rings="4"
+                clearance="5"
+                cone_height="15"
+                delta_theta="45"
+                mount_angle_deg="20"
+                view_poses="{poses}"
+            />
+
 
             <!-- Initial scoring of all candidates (do-while seed) -->
             <SetViews sensor_name="fls" view_poses="{poses}" fractional_scores="{scores}"/>

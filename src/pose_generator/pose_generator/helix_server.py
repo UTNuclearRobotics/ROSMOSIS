@@ -1,5 +1,5 @@
 from uuv_interfaces.srv import GenerateHelix
-from helix_generator.helix_function import generate_helix
+from pose_generator.helix_function import generate_helix
 import rclpy
 from rclpy.node import Node
 

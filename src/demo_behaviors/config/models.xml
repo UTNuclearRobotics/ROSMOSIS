@@ -275,6 +275,14 @@
             <input_port name="reactive" type="bool" default="true">Whether the condition node should be run every tick, or just when restarting the repeated node</input_port>
             <input_port name="max_count" type="unsigned long" default="18446744073709551615">Optional maximum number of times to repeat before returning success</input_port>
         </Control>
+        <Action ID="SampleViewPosesCone">
+            <output_port name="view_poses" type="geometry_msgs::msg::PoseArray_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="mount_angle_deg" type="double"/>
+            <input_port name="cone_height" type="double"/>
+            <input_port name="delta_theta" type="double"/>
+            <input_port name="clearance" type="double"/>
+            <input_port name="num_rings" type="int"/>
+        </Action>
         <Action ID="SampleViewPosesHelix">
             <output_port name="view_poses" type="geometry_msgs::msg::PoseArray_&lt;std::allocator&lt;void&gt; &gt;"/>
             <input_port name="mount_angle_deg" type="double"/>

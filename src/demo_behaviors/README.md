@@ -38,7 +38,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
-`-DCMAKE_BUILD_TYPE=Release` is important for nbv_cpp — without it, its C++ TSDF integration and ray-cast loops run unoptimized (no inlining, no SIMD, etc.) and become noticeably slower. The Python parts of the stack (vista_sim, helix_generator) are unaffected by this flag.
+`-DCMAKE_BUILD_TYPE=Release` is important for nbv_cpp — without it, its C++ TSDF integration and ray-cast loops run unoptimized (no inlining, no SIMD, etc.) and become noticeably slower. The Python parts of the stack (vista_sim, pose_generator) are unaffected by this flag.
 
 ### Launch the full mission
 
@@ -48,7 +48,7 @@ ros2 launch demo_behaviors demo_mission_launch.py
 
 This starts:
 - `vista_sim` (simulator, Dubins action server, sensor publisher, RViz, static TFs)
-- `helix_service` (Python service from helix_generator)
+- `helix_service` (Python service from pose_generator)
 - `next_best_view_server` (from nbv_cpp, configured via `sensor_model/config/nbv_params.yaml`)
 - `bayesian_search_server` (probability map + next-waypoint service for the search subtree)
 - `run_bt` (behavior tree runner; `MainTree`'s `CheckForServers` gates startup, so no launch-side delay is needed)
@@ -121,7 +121,7 @@ Per-target inspection cycle:
 2. `MakeShared` — wrap PoseStamped to SharedPtr for PublishTransform
 3. `PublishTransform` — broadcast `roi_frame` at the target position relative to `map`
 4. `ActivatePolicy` — initialize NBV solver for this target
-5. `SampleViewPosesHelix` — generate candidate viewpoint poses on a helical manifold
+5. `SampleViewPosesHelix` — generate candidate viewpoint poses on a helical manifold (a commented-out `SampleViewPosesCone` block in the XML offers an apex-at-origin cone manifold as a drop-in alternative; both write `{poses}`)
 6. `SetViews` — initial scoring of all candidates
 7. `RepeatWhile`(not saturated):
    - `GetBestView` — argmax over scores, remove from candidate list
@@ -142,6 +142,7 @@ Minimal tree that just runs `DetectAndSortQueue` in a loop. Useful for verifying
 | `DetectAndSortQueue` | SyncActionNode | Subscribes to `/detected_boxes`, accumulates and sorts targets by distance, dedupes via visited_hashmap |
 | `isQueueNotEmpty` | SyncActionNode | Pops front of queue, exposes current target's geometry ID and PoseStamped |
 | `SampleViewPosesHelix` | StatefulActionNode | Async client to `generate_helix` service (Python). Outputs PoseArray of viewpoints in roi_frame |
+| `SampleViewPosesCone` | StatefulActionNode | Async client to `generate_cone` service (Python). Apex-at-origin cone manifold; outputs PoseArray of viewpoints in roi_frame |
 | `DubinsClient` | StatefulActionNode | Async action client to `pose_to_pose`. TF-transforms planning pose to NED, sends goal, polls result. Client-side timeout cancels if exceeded |
 | `MarkTargetComplete` | SyncActionNode | Reads current_id, writes completed_id (signals DetectAndSortQueue to retire) |
 
@@ -164,7 +165,7 @@ Sample NBV behaviors (from sample_nbv_behaviors) use a different pattern — eac
 ## Related Packages
 
 - [vista_sim](../vista_sim/README.md) — simulator, Dubins action server. See its README for sim-specific parameters and environments.
-- `helix_generator` — Python service publishing helix-sampled viewpoints
+- `pose_generator` — Python services publishing sampled viewpoints (helix, cone)
 - `nbv_cpp` — TSDF + NBV scoring server
 - `uuv_interfaces` — message, service, and action definitions (`GenerateHelix.srv`, `PoseToPose.action`, etc.)
 - `sample_nbv_behaviors` (package name `nbv_behaviors`) — base NBV behaviors (ActivatePolicy, SetViews, etc.)

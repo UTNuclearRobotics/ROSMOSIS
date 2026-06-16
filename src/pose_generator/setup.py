@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'helix_generator'
+package_name = 'pose_generator'
 
 setup(
     name=package_name,
@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='talal',
     maintainer_email='talal.alotaibi@utexas.edu',
-    description='Helix viewpoint sampler service for NBV mission planning',
+    description='Viewpoint pose sampler services (helix, cone) for NBV mission planning',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'helix_service=helix_generator.helix_server:main',
+            'helix_service=pose_generator.helix_server:main',
+            'cone_service=pose_generator.cone_server:main',
         ],
     },
 )

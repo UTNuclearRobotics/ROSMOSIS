@@ -78,9 +78,18 @@ def generate_launch_description():
 
     # Helix viewpoint sampler service (Python)
     helix_service = Node(
-        package='helix_generator',
+        package='pose_generator',
         executable='helix_service',
         name='helix_service',
+        output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
+    )
+
+    # Cone viewpoint sampler service (Python; alternative manifold to the helix)
+    cone_service = Node(
+        package='pose_generator',
+        executable='cone_service',
+        name='cone_service',
         output='screen',
         arguments=['--ros-args', '--log-level', log_level],
     )
@@ -141,6 +150,7 @@ def generate_launch_description():
         # nodes / includes
         vista_sim_include,
         helix_service,
+        cone_service,
         nbv_server,
         bayesian_search_server,
         bt_runner,
