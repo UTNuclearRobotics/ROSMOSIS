@@ -9,7 +9,7 @@ next_best_view_server:
       fls:
         camera_info_topic: '/sonar/depth/camera_info'
         distance_multiplier: 1.0
-        max_depth: 10000000.0
+        max_depth: 100.0       # real FLS max range (matches sensor_model ray_casting_core.py)
         min_depth: 0.0
         pointcloud_info:
           horizontal_fov: [0.0, 0.0]

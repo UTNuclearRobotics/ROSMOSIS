@@ -1,0 +1,6 @@
+# Raw rosbags are large data artifacts: keep them out of git; keeper bags are
+# uploaded to external storage where needed. This file keeps data/bags/ in the
+# repo while ignoring every bag recorded into it. Post-processing scripts live
+# in data/ (one level up) and are tracked normally.
+*
+!.gitignore

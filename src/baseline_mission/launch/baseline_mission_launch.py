@@ -1,16 +1,13 @@
 """
-Launch the full NBV mission stack:
-  - vista_sim (simulator, Dubins action server, sensor, drift service, RViz, static TFs)
-  - helix_service (Python service for viewpoint sampling)
-  - next_best_view_server (NBV scoring via TSDF)
-  - run_bt (the behavior tree)
-  - rqt_console (filterable log viewer for all nodes)
-  - rqt_graph (node/topic graph viewer)
+Launch the boustrophedon baseline survey:
+  - vista_sim (simulator, Dubins action server, sensor model, RViz, static TFs)
+  - boustrophedon_run (lawnmower action client)
 
-All user-tunable parameters are declared here at the top so this file is the
-one-stop shop for tweaking mission settings.
-The BT itself waits for required services via the CheckForServers behavior
-at the top of MainTree, so no launch-side delay is needed.
+This is the non-adaptive coverage baseline. It reuses the same simulator,
+Dubins action server, and sensor model as the NBV mission, so the two are
+directly comparable. The client self-gates on the ned<-map TF (to resolve its
+survey depth from clearance) and on the pose_to_pose action server, so no
+launch-side delay is needed.
 """
 
 import datetime
@@ -28,9 +25,8 @@ from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -58,19 +54,18 @@ def generate_launch_description():
     )
     log_level_arg = DeclareLaunchArgument(
         'log_level', default_value='info',
-        description='ROS log level (debug, info, warn, error, fatal). Applies to demo_bt, helix_service, nbv_server.'
+        description='ROS log level (debug, info, warn, error, fatal).'
     )
     record_arg = DeclareLaunchArgument(
         'record', default_value='false',
-        description='Record a rosbag of the mission for offline analysis '
+        description='Record a rosbag of the survey for offline analysis '
                     '(/face_hits /detected_boxes /tf /tf_static).'
     )
     bag_prefix_arg = DeclareLaunchArgument(
-        'bag_prefix', default_value='nbv',
+        'bag_prefix', default_value='boustrophedon',
         description='Output bag directory prefix; a timestamp is appended.'
     )
 
-    # Capture as LaunchConfiguration substitutions for forwarding
     environment = LaunchConfiguration('environment')
     start_rviz = LaunchConfiguration('start_rviz')
     drift_velocity = LaunchConfiguration('drift_velocity')
@@ -79,8 +74,7 @@ def generate_launch_description():
     log_level = LaunchConfiguration('log_level')
 
     # ---- Includes / Nodes ----
-    # Include vista_sim's launch: sim + Dubins action server + sensor + RViz + static TFs.
-    # Forward our top-level args so vista_sim picks them up.
+    # vista_sim: sim + Dubins action server + sensor model + RViz + static TFs.
     vista_sim_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('vista_sim'), 'launch', 'vista_sim_launch.py')
@@ -95,62 +89,34 @@ def generate_launch_description():
         }.items()
     )
 
-    # Helix viewpoint sampler service (Python)
-    helix_service = Node(
-        package='pose_generator',
-        executable='helix_service',
-        name='helix_service',
+    # Boustrophedon lawnmower client. Self-gates on the ned<-map TF and the
+    # pose_to_pose action server, so no launch-side delay is needed.
+    boustrophedon_run = Node(
+        package='baseline_mission',
+        executable='boustrophedon_run',
+        name='boustrophedon_run',
         output='screen',
         arguments=['--ros-args', '--log-level', log_level],
     )
 
-    # Cone viewpoint sampler service (Python; alternative manifold to the helix)
-    cone_service = Node(
-        package='pose_generator',
-        executable='cone_service',
-        name='cone_service',
-        output='screen',
-        arguments=['--ros-args', '--log-level', log_level],
+    # When the survey node exits (it terminates itself after the last waypoint),
+    # shut the whole launch down. This SIGINTs every process, which is how
+    # `ros2 bag record` cleanly finalizes the bag (flush + metadata.yaml), and
+    # makes the launch self-terminating for scripted/repeated runs.
+    survey_done = RegisterEventHandler(
+        OnProcessExit(
+            target_action=boustrophedon_run,
+            on_exit=[EmitEvent(event=Shutdown(reason='survey complete'))],
+        )
     )
 
-    # NBV server (TSDF + scoring), configured via nbv_params.yaml in sensor_model/config
-    nbv_params_path = PathJoinSubstitution([
-        FindPackageShare('sensor_model'), 'config', 'nbv_params.yaml'
-    ])
-    nbv_server = Node(
-        package='nbv_cpp',
-        executable='nbv_server',
-        name='next_best_view_server',
-        output='screen',
-        parameters=[nbv_params_path],
-        arguments=['--ros-args', '--log-level', log_level],
-    )
-
-    # Bayesian search server (probability map + next-waypoint service for the
-    # search subtree). Resolves FLS geometry from the map->ned TF at startup.
-    bayesian_search_server = Node(
-        package='bayesian_search',
-        executable='bayesian_search_server',
-        name='bayesian_search_server',
-        output='screen',
-        arguments=['--ros-args', '--log-level', log_level],
-    )
-
-    # Behavior tree runner - MainTree's CheckForServers gates startup,
-    # so no launch-side delay is needed
-    bt_runner = Node(
-        package='demo_behaviors',
-        executable='run_bt',
-        name='demo_bt',
-        output='screen',
-        arguments=['--ros-args', '--log-level', log_level],
-    )
-
-    # Rosbag recording for offline analysis. Opt-in via record:=true. Same topic
-    # set and storage as the boustrophedon baseline so the two are directly
-    # comparable: timing (stamps), detections, face hits (CIR), TF tree. MCAP is
-    # self-describing (custom FaceHits decodes without sourcing ROS) and
-    # crash-robust. Needs ros-humble-rosbag2-storage-mcap installed.
+    # Rosbag recording for offline analysis. Opt-in via record:=true. Captures
+    # the minimal set needed by the post-processing script: timing (message
+    # stamps), lobster-pot detections (labels + positions), face hits (CIR), and
+    # the TF tree (vehicle trajectory). MCAP storage: self-describing (embeds
+    # message schemas, so custom types like FaceHits decode without sourcing
+    # ROS), crash-robust, and chunk-compressed by the plugin. Needs the Humble
+    # plugin: apt install ros-humble-rosbag2-storage-mcap.
     # Bags land in <workspace-root>/data/bags/ (run ros2 launch from the
     # workspace root). data/bags/ is gitignored; keepers are uploaded to
     # external storage where needed.
@@ -169,18 +135,8 @@ def generate_launch_description():
         output='screen',
     )
 
-    # When the BT runner exits (run_bt returns after the tree hits SUCCESS/FAILURE
-    # at the root, i.e. mission timeout or all pots inspected), shut the launch
-    # down. This SIGINTs every process, cleanly finalizing the bag, and makes the
-    # launch self-terminating for scripted/repeated runs.
-    mission_done = RegisterEventHandler(
-        OnProcessExit(
-            target_action=bt_runner,
-            on_exit=[EmitEvent(event=Shutdown(reason='mission complete'))],
-        )
-    )
-
-    # Optional debugging GUIs
+    # Debugging GUIs (mirrors demo_mission_launch.py): filterable log viewer
+    # for all nodes, and the node/topic graph.
     rqt_console = Node(
         package='rqt_console',
         executable='rqt_console',
@@ -204,13 +160,9 @@ def generate_launch_description():
         bag_prefix_arg,
         # nodes / includes
         vista_sim_include,
-        helix_service,
-        cone_service,
-        nbv_server,
-        bayesian_search_server,
-        bt_runner,
+        boustrophedon_run,
         rosbag_record,
-        mission_done,
+        survey_done,
         # debugging GUIs
         rqt_console,
         rqt_graph,

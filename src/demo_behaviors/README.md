@@ -48,11 +48,12 @@ ros2 launch demo_behaviors demo_mission_launch.py
 
 This starts:
 - `vista_sim` (simulator, Dubins action server, sensor publisher, RViz, static TFs)
-- `helix_service` (Python service from pose_generator)
+- `helix_service` and `cone_service` (Python viewpoint samplers from pose_generator; the tree selects one)
 - `next_best_view_server` (from nbv_cpp, configured via `sensor_model/config/nbv_params.yaml`)
 - `bayesian_search_server` (probability map + next-waypoint service for the search subtree)
 - `run_bt` (behavior tree runner; `MainTree`'s `CheckForServers` gates startup, so no launch-side delay is needed)
 - `rqt_console` (filterable log viewer for all nodes) and `rqt_graph` (node/topic topology)
+- `ros2 bag record` (only when `record:=true`; see [Recording a run](#recording-a-run))
 
 ### Example: override launch parameters
 
@@ -94,6 +95,32 @@ All parameters are declared in [launch/demo_mission_launch.py](launch/demo_missi
 | `constant_velocity` | `0.5` | Navigation velocity for Dubins paths (m/s) |
 | `time_step` | `0.1` | Simulation time step (s) |
 | `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) applied to demo_bt, helix_service, nbv_server, and all vista_sim Python nodes |
+| `record` | `false` | Record a mission rosbag for offline analysis (see [Recording a run](#recording-a-run)) |
+| `bag_prefix` | `nbv` | Output bag directory prefix; a timestamp is appended |
+
+### Recording a run
+
+Pass `record:=true` to capture a rosbag of the mission for offline analysis (CIR, coverage, detection timing):
+
+```bash
+ros2 launch demo_behaviors demo_mission_launch.py record:=true
+```
+
+Each run is saved as its **own directory** under `data/bags/`, named `<bag_prefix>_<timestamp>/`. The timestamp (`YYYYMMDD_HHMMSS`) is **always appended automatically**, so runs never collide. `bag_prefix` is just a human-readable label on the front; it defaults to `nbv`, so the command above produces e.g. `data/bags/nbv_20260617_163756/`. Override it to tag the run's configuration:
+
+```bash
+ros2 launch demo_behaviors demo_mission_launch.py record:=true bag_prefix:=nbv_alpha0.5_helix
+# -> data/bags/nbv_alpha0.5_helix_20260617_163756/
+```
+
+Inside each run directory you get the `.mcap` file plus a `metadata.yaml` (written last, on clean close — its presence means the bag finalized correctly).
+
+- **Topics**: `/face_hits` (CIR `(geometry_id, primitive_id)` pairs), `/detected_boxes` (per-detection box centroids, published only when something is seen), `/tf`, `/tf_static`.
+- **Format**: MCAP. It is self-describing (embeds message schemas, so the custom `FaceHits` decodes in Python without sourcing ROS) and crash-robust. Requires the storage plugin: `sudo apt install ros-humble-rosbag2-storage-mcap`.
+- **Location**: `<workspace-root>/data/bags/<bag_prefix>_<timestamp>/` — run `ros2 launch` from the workspace root. `data/bags/` is gitignored; keeper bags are uploaded to external storage where needed.
+- **Auto-stop**: when the mission ends (the tree returns SUCCESS/FAILURE at the root — mission timeout or all targets inspected — and `run_bt` exits), the launch shuts down via an `OnProcessExit` handler. This SIGINTs every process, which cleanly finalizes the bag, so a recorded run is hands-off (no Ctrl-C needed).
+
+This is the same topic set, format, and `data/bags/` layout as the `baseline_mission` boustrophedon launch, so NBV and baseline runs are directly comparable. For a time-bounded comparison, set the mission budget (`isWithinTimeLimit` in `main_tree.xml`) equal to the baseline survey duration.
 
 ### Log level modes
 
