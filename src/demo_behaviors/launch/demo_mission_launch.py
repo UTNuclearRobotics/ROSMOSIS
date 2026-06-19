@@ -30,6 +30,7 @@ from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 
@@ -136,13 +137,27 @@ def generate_launch_description():
         arguments=['--ros-args', '--log-level', log_level],
     )
 
-    # Behavior tree runner - MainTree's CheckForServers gates startup,
-    # so no launch-side delay is needed
+    # Per-run output label, computed once and shared by the bag and the
+    # reconstructions so they carry the same name. data/ is at the workspace root
+    # (run ros2 launch from there).
+    stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    recon_dir = os.path.join(os.getcwd(), 'data', 'reconstructions')
+
+    # Behavior tree runner - MainTree's CheckForServers gates startup, so no
+    # launch-side delay is needed. reconstruction_dir is passed to run_bt (node
+    # demo_bt), which seeds it onto the BT blackboard so SaveModelToFile writes
+    # each target's mesh under data/reconstructions/<bag_prefix>_<timestamp>/.
     bt_runner = Node(
         package='demo_behaviors',
         executable='run_bt',
         name='demo_bt',
         output='screen',
+        parameters=[{
+            'reconstruction_dir': ParameterValue(
+                [os.path.join(recon_dir, ''), LaunchConfiguration('bag_prefix'), '_', stamp],
+                value_type=str,
+            ),
+        }],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -154,7 +169,6 @@ def generate_launch_description():
     # Bags land in <workspace-root>/data/bags/ (run ros2 launch from the
     # workspace root). data/bags/ is gitignored; keepers are uploaded to
     # external storage where needed.
-    stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     bags_dir = os.path.join(os.getcwd(), 'data', 'bags')
     os.makedirs(bags_dir, exist_ok=True)
     rosbag_record = ExecuteProcess(

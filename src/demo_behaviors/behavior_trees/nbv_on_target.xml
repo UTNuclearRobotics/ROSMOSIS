@@ -90,8 +90,15 @@
                 </Sequence>
             </RepeatWhile>
 
-            <!-- Finalize reconstruction for this target -->
-            <ConcludePolicy return_pointcloud="false"/>
+            <!-- Finalize reconstruction for this target, returning the Marching Cubes mesh -->
+            <ConcludePolicy return_pointcloud="false" return_mesh="true" scene_mesh="{object_mesh}"/>
+
+            <!-- Save the reconstructed mesh to disk under this run's reconstruction_dir
+                 (seeded onto the blackboard by run_bt from the launch parameter, so it
+                 matches the bag's run label). Named by target id. SaveModelToFile creates
+                 the directory and picks the format from the file extension (.ply/.stl/.obj). -->
+            <Script code="mesh_path := reconstruction_dir .. '/target_' .. current_ID .. '.obj'"/>
+            <SaveModelToFile file_path="{mesh_path}" mesh="{object_mesh}" overwrite="true"/>
 
             <!-- Signal DetectAndSortQueue to retire this target -->
             <MarkTargetComplete current_id_read="{current_ID}" completed_id_write="{completed_id}"/>

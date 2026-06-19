@@ -29,6 +29,7 @@
 #include "nbv_behaviors/get_best_view_with_cost.hpp"
 #include "nbv_behaviors/calculate_planning_pose.hpp"
 #include "nbv_behaviors/conclude_policy.hpp"
+#include "nbv_behaviors/save_model_to_file.hpp"
 
 // nrg_behaviors - convenience registration covers PublishTransform, RepeatWhile, etc.
 // Templated behaviors (like MakeShared<T>) must be registered manually with a specific type.
@@ -45,6 +46,13 @@ int main(int argc, char **argv)
   // poll futures non-blockingly via wait_for(0ms); the jthread below does the actual
   // executor work that resolves those futures and fires subscription callbacks.
   auto node = std::make_shared<rclcpp::Node>("demo_bt");
+
+  // Per-run reconstruction output directory, supplied by the launch (built from
+  // the same bag_prefix + timestamp as the rosbag, so reconstructions and the bag
+  // share a run label). Seeded onto the tree blackboard below so SaveModelToFile
+  // in NBVOnTarget writes each target's mesh under this run's folder.
+  node->declare_parameter("reconstruction_dir", std::string("data/reconstructions/default"));
+  const std::string reconstruction_dir = node->get_parameter("reconstruction_dir").as_string();
 
   // Two-thread architecture:
   //   - Main thread (this one): blocks below in tree.tickWhileRunning(), ticking BT nodes
@@ -93,6 +101,7 @@ int main(int argc, char **argv)
   factory.registerNodeType<nbv_behaviors::GetBestViewWithCost>("GetBestViewWithCost");
   factory.registerNodeType<nbv_behaviors::CalculatePlanningPose>("CalculatePlanningPose");
   factory.registerNodeType<nbv_behaviors::ConcludePolicy>("ConcludePolicy");
+  factory.registerNodeType<nbv_behaviors::SaveModelToFile>("SaveModelToFile");
 
   // nrg_behaviors - one call registers PublishTransform, RepeatWhile, etc.
   // Pass our shared node so those behaviors use the same executor (jthread above).
@@ -133,6 +142,10 @@ int main(int argc, char **argv)
   // MainTree is the root; it has one NBVOnTarget subtree that gets re-ticked
   // each loop iteration with a different target (via blackboard autoremap).
   auto tree = factory.createTree("MainTree");
+
+  // Seed the per-run reconstruction directory onto the root blackboard; the
+  // NBVOnTarget subtree (_autoremap="true") reads it as {reconstruction_dir}.
+  tree.rootBlackboard()->set("reconstruction_dir", reconstruction_dir);
 
   BT::Groot2Publisher publisher(tree); // Publish to Groot2 to view BT on Port 1667
 

@@ -43,8 +43,10 @@
             <input_port name="pointcloud1" type="std::shared_ptr&lt;sensor_msgs::msg::PointCloud2_&lt;std::allocator&lt;void&gt; &gt; &gt;">The first pointcloud to concatenate</input_port>
         </Action>
         <Action ID="ConcludePolicy">
-            <output_port name="roi_cloud" type="sensor_msgs::msg::PointCloud2_&lt;std::allocator&lt;void&gt; &gt;"/>
-            <output_port name="scene_cloud" type="sensor_msgs::msg::PointCloud2_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <output_port name="scene_mesh" type="std::shared_ptr&lt;shape_msgs::msg::Mesh_&lt;std::allocator&lt;void&gt; &gt; &gt;"/>
+            <output_port name="roi_cloud" type="std::shared_ptr&lt;sensor_msgs::msg::PointCloud2_&lt;std::allocator&lt;void&gt; &gt; &gt;"/>
+            <output_port name="scene_cloud" type="std::shared_ptr&lt;sensor_msgs::msg::PointCloud2_&lt;std::allocator&lt;void&gt; &gt; &gt;"/>
+            <input_port name="return_mesh" type="bool"/>
             <input_port name="return_pointcloud" type="bool"/>
         </Action>
         <Action ID="DetectAndSortQueue">
@@ -293,6 +295,14 @@
             <input_port name="num_shells" type="int"/>
             <input_port name="radius_multiplier" type="double"/>
             <input_port name="min_radius" type="double"/>
+        </Action>
+        <Action ID="SaveModelToFile">
+            <input_port name="overwrite" type="bool" default="false">Whether or not to allow overwriting of existing files</input_port>
+            <input_port name="mesh_marker" type="std::shared_ptr&lt;visualization_msgs::msg::Marker_&lt;std::allocator&lt;void&gt; &gt; &gt;">A visualization marker encoded with the mesh triangles</input_port>
+            <input_port name="mesh" type="std::shared_ptr&lt;shape_msgs::msg::Mesh_&lt;std::allocator&lt;void&gt; &gt; &gt;">The fully combined mesh message for mesh files</input_port>
+            <input_port name="triangles" type="std::vector&lt;unsigned int, std::allocator&lt;unsigned int&gt; &gt;">The triangle vertex indices of the subdivided mesh, organized into set of 3 for each triangle</input_port>
+            <input_port name="points" type="std::shared_ptr&lt;sensor_msgs::msg::PointCloud2_&lt;std::allocator&lt;void&gt; &gt; &gt;">The vertices of the subdivided mesh</input_port>
+            <input_port name="file_path" type="std::string">The absolute or URI coded file path. Supported file types are pcd, stl, obj, ply</input_port>
         </Action>
         <Action ID="SetROIExtents">
             <output_port name="roi_extents" type="geometry_msgs::msg::Vector3_&lt;std::allocator&lt;void&gt; &gt;"/>
