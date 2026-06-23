@@ -97,7 +97,7 @@
                  (seeded onto the blackboard by run_bt from the launch parameter, so it
                  matches the bag's run label). Named by target id. SaveModelToFile creates
                  the directory and picks the format from the file extension (.ply/.stl/.obj). -->
-            <Script code="mesh_path := reconstruction_dir .. '/target_' .. current_ID .. '.obj'"/>
+            <Script code="mesh_path := reconstruction_dir .. '/target_' .. current_ID .. '.ply'"/>
             <SaveModelToFile file_path="{mesh_path}" mesh="{object_mesh}" overwrite="true"/>
 
             <!-- Signal DetectAndSortQueue to retire this target -->
