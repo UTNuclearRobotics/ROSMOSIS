@@ -14,6 +14,8 @@
   <depend>tf_transformations</depend>
   <depend>uuv_interfaces</depend>
   <exec_depend>pydubins</exec_depend>
+  <exec_depend>python3-pandas</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
   <exec_depend>eca_a9_description</exec_depend>
   <exec_depend>sensor_model</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
