@@ -54,6 +54,11 @@ int main(int argc, char **argv)
   node->declare_parameter("reconstruction_dir", std::string("data/reconstructions/default"));
   const std::string reconstruction_dir = node->get_parameter("reconstruction_dir").as_string();
 
+  // CI-NBV cost weight, supplied by the launch (the experiment-sweep knob).
+  // Seeded onto the blackboard below so GetBestViewWithCost reads it as {alpha}.
+  node->declare_parameter("alpha", 0.5);
+  const double alpha = node->get_parameter("alpha").as_double();
+
   // Two-thread architecture:
   //   - Main thread (this one): blocks below in tree.tickWhileRunning(), ticking BT nodes
   //     and polling futures with wait_for(0ms). It never spins the executor itself.
@@ -146,6 +151,9 @@ int main(int argc, char **argv)
   // Seed the per-run reconstruction directory onto the root blackboard; the
   // NBVOnTarget subtree (_autoremap="true") reads it as {reconstruction_dir}.
   tree.rootBlackboard()->set("reconstruction_dir", reconstruction_dir);
+
+  // Seed the CI-NBV cost weight; GetBestViewWithCost reads it as {alpha}.
+  tree.rootBlackboard()->set("alpha", alpha);
 
   BT::Groot2Publisher publisher(tree); // Publish to Groot2 to view BT on Port 1667
 

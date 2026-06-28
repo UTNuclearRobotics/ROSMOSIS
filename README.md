@@ -108,8 +108,49 @@ ros2 launch demo_behaviors demo_mission_launch.py \
 | `log_level` | `info` | ROS log level for all nodes (debug/info/warn/error/fatal) |
 | `record` | `false` | Record an MCAP bag of the mission (`/face_hits`, `/detected_boxes`, `/tf`, `/tf_static`) into `data/bags/`. Requires `ros-humble-rosbag2-storage-mcap`. |
 | `bag_prefix` | `nbv` | Run label for the output. A timestamp is appended automatically, and the same label tags both the bag (`data/bags/`) and the per-run reconstruction folder (`data/reconstructions/`). |
+| `alpha` | `0.5` | CI-NBV cost weight in [0,1] for `GetBestViewWithCost`: utility = (1-alpha)·IG_norm − alpha·cost_norm. 0 = pure info-gain, 1 = pure cost. Plumbed CLI → `run_bt` → blackboard → BT, so it is the experiment-sweep knob (no XML edit). NBV mission only. |
+| `debug_gui` | `false` | Start the `rqt_console` / `rqt_graph` GUIs. Leave `false` for headless / batch / parallel runs (they need a display); `true` while debugging. Present in both the NBV and baseline launches. |
 
 See all args: `ros2 launch demo_behaviors demo_mission_launch.py --show-args`
+
+### Baseline mission (boustrophedon)
+
+The `baseline_mission` package provides the **non-adaptive comparison baseline**: an
+exhaustive boustrophedon (lawnmower) survey that sweeps the whole arena at a fixed
+clearance, ignoring where the targets are. It reuses the same simulator, Dubins
+action server, and sensor model as the NBV mission, and records the **same topic
+set and bag layout**, so the two are directly comparable.
+
+```bash
+ros2 launch baseline_mission baseline_mission_launch.py \
+    environment:=env_50x50_cluster_seabed record:=true bag_prefix:=boustrophedon_cluster
+```
+
+| Parameter | Default | Description |
+|---|---|---|
+| `environment` | `environment_basic` | Environment yaml from `sensor_model/config/` |
+| `start_rviz` | `true` | Launch RViz |
+| `drift_velocity` | `0.25` | Idle drift speed between goals (m/s) |
+| `constant_velocity` | `0.5` | Navigation speed along Dubins paths (m/s) |
+| `time_step` | `0.1` | Simulation dt (s) |
+| `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) |
+| `record` | `false` | Record an MCAP bag (`/face_hits`, `/detected_boxes`, `/tf`, `/tf_static`) into `data/bags/` |
+| `bag_prefix` | `boustrophedon` | Run label; a timestamp is appended; tags the bag folder under `data/bags/` |
+| `debug_gui` | `false` | Start the `rqt_console` / `rqt_graph` GUIs. Leave `false` for headless / batch / parallel runs |
+
+The baseline takes the same launch args as the NBV mission **except `alpha`** (which is
+NBV-only). The **survey geometry** (clearance, FOV, mount angle, ROI extents) is set as
+members in `boustrophedon_run.py`, not via launch args — see the package README. See all
+args: `ros2 launch baseline_mission baseline_mission_launch.py --show-args`.
+
+It runs a standalone `rclpy` action client (no behavior tree, no NBV/search servers):
+it computes the lawnmower waypoints in-file from the FLS swath geometry (lane spacing
+= half the cross-track footprint for 50% overlap), then dispatches them one at a time
+as `PoseToPose` goals. Lane spacing and the along-track running start are derived from
+the sensor FOV and mount angle, so they stay consistent with the NBV sensor. The
+launch self-terminates when the survey finishes. See
+[baseline_mission/README.md](src/baseline_mission/README.md) for the geometry and
+tunable parameters.
 
 ## Mission Architecture
 

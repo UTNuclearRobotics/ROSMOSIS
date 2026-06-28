@@ -4,8 +4,8 @@ Launch the full NBV mission stack:
   - helix_service (Python service for viewpoint sampling)
   - next_best_view_server (NBV scoring via TSDF)
   - run_bt (the behavior tree)
-  - rqt_console (filterable log viewer for all nodes)
-  - rqt_graph (node/topic graph viewer)
+  - rqt_console (filterable log viewer for all nodes)   [debug_gui:=true only]
+  - rqt_graph (node/topic graph viewer)                [debug_gui:=true only]
 
 All user-tunable parameters are declared here at the top so this file is the
 one-stop shop for tweaking mission settings.
@@ -69,6 +69,17 @@ def generate_launch_description():
     bag_prefix_arg = DeclareLaunchArgument(
         'bag_prefix', default_value='nbv',
         description='Output bag directory prefix; a timestamp is appended.'
+    )
+    alpha_arg = DeclareLaunchArgument(
+        'alpha', default_value='0.5',
+        description='CI-NBV cost weight in [0,1] for GetBestViewWithCost: '
+                    'utility = (1-alpha)*IG_norm - alpha*cost_norm. '
+                    '0 = pure info-gain (greedy), 1 = pure cost. This is the knob to sweep.'
+    )
+    debug_gui_arg = DeclareLaunchArgument(
+        'debug_gui', default_value='false',
+        description='Start the rqt_console / rqt_graph debugging GUIs. Leave false '
+                    'for headless / batch / parallel runs (they need a display).'
     )
 
     # Capture as LaunchConfiguration substitutions for forwarding
@@ -157,6 +168,9 @@ def generate_launch_description():
                 [os.path.join(recon_dir, ''), LaunchConfiguration('bag_prefix'), '_', stamp],
                 value_type=str,
             ),
+            # CI-NBV cost weight, seeded onto the blackboard by run_bt and read by
+            # GetBestViewWithCost as {alpha}. This is what the experiment sweep varies.
+            'alpha': ParameterValue(LaunchConfiguration('alpha'), value_type=float),
         }],
         arguments=['--ros-args', '--log-level', log_level],
     )
@@ -194,16 +208,19 @@ def generate_launch_description():
         )
     )
 
-    # Optional debugging GUIs
+    # Optional debugging GUIs. Gated by debug_gui (default false) so headless /
+    # batch / parallel runs don't try to open windows with no display.
     rqt_console = Node(
         package='rqt_console',
         executable='rqt_console',
         name='rqt_console',
+        condition=IfCondition(LaunchConfiguration('debug_gui')),
     )
     rqt_graph = Node(
         package='rqt_graph',
         executable='rqt_graph',
         name='rqt_graph',
+        condition=IfCondition(LaunchConfiguration('debug_gui')),
     )
 
     return LaunchDescription([
@@ -216,6 +233,8 @@ def generate_launch_description():
         log_level_arg,
         record_arg,
         bag_prefix_arg,
+        alpha_arg,
+        debug_gui_arg,
         # nodes / includes
         vista_sim_include,
         helix_service,

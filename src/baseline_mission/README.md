@@ -27,7 +27,7 @@ ros2 launch baseline_mission baseline_mission_launch.py environment:=env_50x50_c
 This starts:
 - `vista_sim` (simulator, Dubins action server, sensor model, RViz, static TFs)
 - `boustrophedon_run` (the lawnmower action client)
-- `rqt_console` (filterable log viewer) and `rqt_graph` (node/topic topology)
+- `rqt_console` (filterable log viewer) and `rqt_graph` (node/topic topology) — only when `debug_gui:=true`
 - `ros2 bag record` (only when `record:=true`; see [Recording a run](#recording-a-run))
 
 The client self-gates: it waits for the `ned<-map` TF (to resolve its survey depth from clearance) and for the `pose_to_pose` action server, so no launch-side delay is needed.
@@ -70,6 +70,7 @@ Poses are in **NED** (matches the Dubins action server): `position.x = north`, `
 | `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) |
 | `record` | `false` | Record a survey rosbag (see [Recording a run](#recording-a-run)) |
 | `bag_prefix` | `boustrophedon` | Output bag directory prefix; a timestamp is appended |
+| `debug_gui` | `false` | Start the `rqt_console` / `rqt_graph` GUIs. Leave `false` for headless / batch / parallel runs (they need a display); set `true` while debugging interactively |
 
 ### Survey geometry (edit in [boustrophedon_run.py](baseline_mission/boustrophedon_run.py))
 

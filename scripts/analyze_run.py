@@ -15,7 +15,7 @@ from rosbags.dataframe import get_dataframe
 from rosbags.typesys import Stores, get_types_from_msg, get_typestore
 
 # %% Parameters - set the run to analyze
-BAG_NAME = "boustrophedon_test1_20260624_163316"
+BAG_NAME = "boustrophedon_cluster_20260626_192732"
 M = 4   # total targets in the scene (box_count); undetected targets still count as CIR 0
 
 # %%
@@ -80,6 +80,7 @@ hits["target_face_mapping"] = list(zip(hits["geometry_ids"], hits["face"]))
 hits = hits.drop_duplicates(subset=["timestamp", "target_face_mapping"])
 hits = hits.drop(columns="target_face_mapping")
 
+
 # %%
 # the mask which finds seabed entries. anything that is not a seabed
 # must be a target
@@ -87,6 +88,11 @@ selection_mask = hits["geometry_ids"] < 1
 df_seabed  = hits[selection_mask].copy()
 df_targets = hits[~selection_mask].copy()
 
+# --- FILTER OUT BOTTOM FACE ARTIFACTS ---
+# Face 5 is the occluded bottom face resting on the seabed. 
+# We remove it so it does not falsely inflate the CIR metric.
+df_targets = df_targets[df_targets["face"] != 5]
+# ----------------------------------------
 # %%
 # Group rows by (geometry_ids, face): pandas builds one composite key per row
 # from these two columns, and rows sharing a key fall into the same bucket.
@@ -160,3 +166,100 @@ plt.savefig(plots_dir / f"cir_{BAG_NAME}.png", dpi=150, bbox_inches="tight")
 print("Saved:", plots_dir / f"cir_{BAG_NAME}.png")
 
 plt.show()
+
+
+# %% [markdown]
+# # Diagnostic: Unique faces detected per target
+# Check if bottom face (5) or any unexpected faces were hit.
+
+# %%
+print("\n--- Diagnostic: Unique faces hit per geometry_id ---")
+
+# Group by geometry_ids and get the unique face IDs as an array
+detected_faces_per_target = df_targets.groupby("geometry_ids")["face"].unique()
+
+# Print them out clearly sorted
+for geom_id, faces in detected_faces_per_target.items():
+    print(f"Target ID: {geom_id} | Faces Hit: {sorted(faces)}")
+    
+    # Optional: flag if the bottom face was hit
+    if 5 in faces:
+        print(f"  -> [WARNING] Target {geom_id} registered a hit on bottom Face 5!")
+
+print("----------------------------------------------------\n")
+
+# %% [markdown]
+# # Position Heatmap (map frame) - VECTORIZED
+# Extracts bare translations and uses vectorized NumPy operations
+# for massive speedups on large-scale datasets.
+
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+import tf_transformations
+
+map_to_ned_matrix = np.eye(4)
+raw_ned_positions = []
+
+print("\n--- Extracting TF data for Heatmap ---")
+
+with AnyReader([bag_dir], default_typestore=typestore) as reader:
+    # 1. Fetch static map -> ned transform (Only happens once)
+    static_conns = [c for c in reader.connections if c.topic == '/tf_static']
+    for conn, timestamp, rawdata in reader.messages(connections=static_conns):
+        msg = reader.deserialize(rawdata, conn.msgtype)
+        for t in msg.transforms:
+            if t.header.frame_id == 'map' and t.child_frame_id == 'ned':
+                q = t.transform.rotation
+                trans = t.transform.translation
+                map_to_ned_matrix = tf_transformations.quaternion_matrix([q.x, q.y, q.z, q.w])
+                map_to_ned_matrix[:3, 3] = [trans.x, trans.y, trans.z]
+
+    # 2. Fetch dynamic ned -> base_link transforms
+    tf_conns = [c for c in reader.connections if c.topic == '/tf']
+    for conn, timestamp, rawdata in reader.messages(connections=tf_conns):
+        msg = reader.deserialize(rawdata, conn.msgtype)
+        for t in msg.transforms:
+            if t.header.frame_id == 'ned' and t.child_frame_id == 'base_link':
+                trans = t.transform.translation
+                # OPTIMIZATION: Ignore quaternions entirely.
+                # Store as homogeneous coordinate [X, Y, Z, 1.0] for matrix math
+                raw_ned_positions.append([trans.x, trans.y, trans.z, 1.0])
+
+print(f"Extracted {len(raw_ned_positions)} position samples.")
+
+# %%
+# --- THE MASSIVE OPTIMIZATION (Vectorized Math) ---
+
+# Convert the python list into an Nx4 NumPy array, then transpose to 4xN
+# Shape: 4 rows (X, Y, Z, 1), N columns (time steps)
+ned_points = np.array(raw_ned_positions).T 
+
+# Multiply the 4x4 static map matrix by all N positions simultaneously!
+# This runs in C, taking milliseconds instead of minutes.
+map_points = map_to_ned_matrix @ ned_points 
+
+# Extract the X and Y rows
+x_coords = map_points[0, :]
+y_coords = map_points[1, :]
+
+# --- PLOTTING ---
+plt.figure(figsize=(12, 10))
+
+# Create a hexbin heatmap
+hb = plt.hexbin(x_coords, y_coords, gridsize=50, cmap='inferno', mincnt=1)
+
+cb = plt.colorbar(hb)
+cb.set_label('Observation Count (Relative Time Spent)')
+
+plt.xlabel("X Position (m) [Map Frame]")
+plt.ylabel("Y Position (m) [Map Frame]")
+plt.title(f"2D Position Heatmap: {BAG_NAME}")
+plt.axis('equal') 
+plt.grid(alpha=0.3)
+
+plt.savefig(plots_dir / f"heatmap_{BAG_NAME}.png", dpi=150, bbox_inches="tight")
+print("Saved:", plots_dir / f"heatmap_{BAG_NAME}.png")
+
+plt.show()
+# %%

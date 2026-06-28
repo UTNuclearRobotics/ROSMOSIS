@@ -52,7 +52,7 @@
             <!-- NBV loop: repeat while not saturated -->
             <RepeatWhile reactive = "false">
                 <Inverter>
-                    <CheckScoreSaturation threshold="0.05" patience="2" fractional_scores="{scores}"/>
+                    <CheckScoreSaturation threshold="0.10" patience="2" fractional_scores="{scores}"/>
                 </Inverter>
                 <Sequence>
                     <!-- Cost each remaining candidate via true Dubins path length (NED, server-side) -->
@@ -69,7 +69,7 @@
                         view_poses="{poses}"
                         fractional_scores="{scores}"
                         path_costs="{path_costs}"
-                        alpha="0.5"
+                        alpha="{alpha}"
                         best_view_pose="{best_view_pose}"
                         new_poses="{poses}"
                         new_scores="{scores}"

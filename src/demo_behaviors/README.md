@@ -52,7 +52,7 @@ This starts:
 - `next_best_view_server` (from nbv_cpp, configured via `sensor_model/config/nbv_params.yaml`)
 - `bayesian_search_server` (probability map + next-waypoint service for the search subtree)
 - `run_bt` (behavior tree runner; `MainTree`'s `CheckForServers` gates startup, so no launch-side delay is needed)
-- `rqt_console` (filterable log viewer for all nodes) and `rqt_graph` (node/topic topology)
+- `rqt_console` (filterable log viewer for all nodes) and `rqt_graph` (node/topic topology) — only when `debug_gui:=true`
 - `ros2 bag record` (only when `record:=true`; see [Recording a run](#recording-a-run))
 
 ### Example: override launch parameters
@@ -97,6 +97,18 @@ All parameters are declared in [launch/demo_mission_launch.py](launch/demo_missi
 | `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) applied to demo_bt, helix_service, nbv_server, and all vista_sim Python nodes |
 | `record` | `false` | Record a mission rosbag for offline analysis (see [Recording a run](#recording-a-run)) |
 | `bag_prefix` | `nbv` | Output bag directory prefix; a timestamp is appended |
+| `alpha` | `0.5` | CI-NBV cost weight in [0,1] for `GetBestViewWithCost`: utility = (1-alpha)·IG_norm − alpha·cost_norm. 0 = pure info-gain (greedy), 1 = pure cost. The knob to sweep across experiments. |
+| `debug_gui` | `false` | Start the `rqt_console` / `rqt_graph` GUIs. Leave `false` for headless / batch / parallel runs (they need a display); set `true` while debugging interactively. |
+
+`alpha` is plumbed through to the behavior tree: the launch passes it to `run_bt`
+(node `demo_bt`), which seeds it onto the root blackboard, and `GetBestViewWithCost`
+reads it as `{alpha}`. So you sweep it purely from the command line, no XML edit:
+
+```bash
+ros2 launch demo_behaviors demo_mission_launch.py \
+    environment:=env_50x50_cluster_seabed record:=true \
+    alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25 debug_gui:=false
+```
 
 ### Recording a run
 

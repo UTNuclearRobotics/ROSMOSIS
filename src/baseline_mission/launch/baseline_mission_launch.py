@@ -65,6 +65,11 @@ def generate_launch_description():
         'bag_prefix', default_value='boustrophedon',
         description='Output bag directory prefix; a timestamp is appended.'
     )
+    debug_gui_arg = DeclareLaunchArgument(
+        'debug_gui', default_value='false',
+        description='Start the rqt_console / rqt_graph debugging GUIs. Leave false '
+                    'for headless / batch / parallel runs (they need a display).'
+    )
 
     environment = LaunchConfiguration('environment')
     start_rviz = LaunchConfiguration('start_rviz')
@@ -136,16 +141,19 @@ def generate_launch_description():
     )
 
     # Debugging GUIs (mirrors demo_mission_launch.py): filterable log viewer
-    # for all nodes, and the node/topic graph.
+    # for all nodes, and the node/topic graph. Gated by debug_gui (default false)
+    # so headless / batch / parallel runs don't try to open windows with no display.
     rqt_console = Node(
         package='rqt_console',
         executable='rqt_console',
         name='rqt_console',
+        condition=IfCondition(LaunchConfiguration('debug_gui')),
     )
     rqt_graph = Node(
         package='rqt_graph',
         executable='rqt_graph',
         name='rqt_graph',
+        condition=IfCondition(LaunchConfiguration('debug_gui')),
     )
 
     return LaunchDescription([
@@ -158,6 +166,7 @@ def generate_launch_description():
         log_level_arg,
         record_arg,
         bag_prefix_arg,
+        debug_gui_arg,
         # nodes / includes
         vista_sim_include,
         boustrophedon_run,
