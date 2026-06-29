@@ -67,16 +67,20 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 # scikit-learn, matplotlib). Unconstrained, that stack upgrades two packages the
 # rest of the workspace -- built against ROS's apt Python packages -- cannot
 # tolerate at runtime:
-#   * numpy 2.x       -> ROS apt transforms3d calls np.maximum_sctype (removed
-#                        in NumPy 2.0); numpy-1.x-ABI C-exts (bottleneck/numexpr)
-#                        fail with "_ARRAY_API not found".
+#   * numpy >=1.24    -> ROS apt transforms3d 0.3.1 (2017) uses np.float at
+#                        import (quaternions.py:26), removed in NumPy 1.24; every
+#                        tf_transformations import then dies with "module 'numpy'
+#                        has no attribute 'float'". (numpy 2.0 additionally
+#                        removed np.maximum_sctype, which that same line calls,
+#                        and breaks numpy-1.x-ABI C-exts bottleneck/numexpr with
+#                        "_ARRAY_API not found" -- so <1.24 covers both.)
 #   * matplotlib >=3.6 -> dropped matplotlib.docstring, still imported by the apt
 #                        mpl_toolkits.mplot3d that the helix/cone services use.
 # PIP_CONSTRAINT pins both for EVERY pip install in this image, across the full
 # transitive resolution, so no open3d dependency can bump them. NB: a two-step
-# `pip install numpy<2 && pip install open3d` does NOT work -- the open3d step
-# re-resolves on its own pass and upgrades numpy back to 2.x.
-RUN printf 'numpy<2\nmatplotlib<3.6\n' > /etc/pip-constraints.txt
+# `pip install numpy<1.24 && pip install open3d` does NOT work -- the open3d step
+# re-resolves on its own pass and upgrades numpy back up.
+RUN printf 'numpy<1.24\nmatplotlib<3.6\n' > /etc/pip-constraints.txt
 ENV PIP_CONSTRAINT=/etc/pip-constraints.txt
 RUN pip install --no-cache-dir open3d
 
