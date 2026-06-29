@@ -63,15 +63,22 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 # (nbv_cpp, open3d_conversions) is unrelated and handled below via the real
 # libopen3d-dev apt package, through rosdep.
 #
-# numpy<2 is pinned explicitly and FIRST: an unpinned `pip install open3d`
-# pulls numpy 2.x transitively, which breaks every other Python node in the
-# workspace at runtime -- ROS's apt-provided tf_transformations/transforms3d
-# uses a numpy 1.x-only API (np.maximum_sctype, removed in 2.0), and open3d's
-# own transitive deps (sklearn, pandas, bottleneck) are pulled in as numpy
-# 1.x-ABI wheels that segfault/AttributeError under numpy 2.x ("_ARRAY_API not
-# found"). Pinning here forces pip to resolve open3d against 1.x instead.
-RUN pip install --no-cache-dir "numpy<2" \
-    && pip install --no-cache-dir open3d
+# open3d auto-imports open3d.ml, dragging in a heavy pip ML stack (pandas,
+# scikit-learn, matplotlib). Unconstrained, that stack upgrades two packages the
+# rest of the workspace -- built against ROS's apt Python packages -- cannot
+# tolerate at runtime:
+#   * numpy 2.x       -> ROS apt transforms3d calls np.maximum_sctype (removed
+#                        in NumPy 2.0); numpy-1.x-ABI C-exts (bottleneck/numexpr)
+#                        fail with "_ARRAY_API not found".
+#   * matplotlib >=3.6 -> dropped matplotlib.docstring, still imported by the apt
+#                        mpl_toolkits.mplot3d that the helix/cone services use.
+# PIP_CONSTRAINT pins both for EVERY pip install in this image, across the full
+# transitive resolution, so no open3d dependency can bump them. NB: a two-step
+# `pip install numpy<2 && pip install open3d` does NOT work -- the open3d step
+# re-resolves on its own pass and upgrades numpy back to 2.x.
+RUN printf 'numpy<2\nmatplotlib<3.6\n' > /etc/pip-constraints.txt
+ENV PIP_CONSTRAINT=/etc/pip-constraints.txt
+RUN pip install --no-cache-dir open3d
 
 # ---- clone workspace (outer ROSMOSIS + the four nested repos) ----
 # Cloned fresh from remote so a param push is picked up without staging repos on
