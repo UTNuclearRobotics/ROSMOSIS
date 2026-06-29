@@ -85,7 +85,9 @@ hits = hits.drop(columns="target_face_mapping")
 # the mask which finds seabed entries. anything that is not a seabed
 # must be a target
 selection_mask = hits["geometry_ids"] < 1
+
 df_seabed  = hits[selection_mask].copy()
+
 df_targets = hits[~selection_mask].copy()
 
 # --- FILTER OUT BOTTOM FACE ARTIFACTS ---
@@ -152,12 +154,20 @@ import matplotlib.pyplot as plt
 
 plt.figure(figsize=(20, 10))
 for col in cir_timeseries.columns:
-    style = dict(linewidth=2.5, color="black") if col == "CIR_total" else dict(linewidth=1)
+    if col == "CIR_total":
+        style = dict(linewidth=2.5, color="black")
+        label = "CIR$_{total}$ (mission)"
+    else:
+        style = dict(linewidth=1)
+        label = f"Target {col}"
     plt.plot(cir_timeseries.index, cir_timeseries[col],
-             drawstyle="steps-post", label=str(col), **style)
+             drawstyle="steps-post", label=label, **style)
 
-plt.xlabel("t (s)"); plt.ylabel(""); plt.xlim(left=0); plt.ylim(-0.02, 1.02)
-plt.legend(title="per target & total"); plt.grid(alpha=0.3)
+plt.xlabel("Mission time t (s)")
+plt.ylabel("Cumulative Information Ratio (CIR)")
+plt.title(f"Cumulative Information Ratio vs. Mission Time\n{BAG_NAME}")
+plt.xlim(left=0); plt.ylim(-0.02, 1.02)
+plt.legend(title="Per-target & mission total"); plt.grid(alpha=0.3)
 
 # save keyed on BAG_NAME so different runs don't clobber each other's plot
 plots_dir = root / "data" / "plots"
