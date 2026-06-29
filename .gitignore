@@ -36,4 +36,6 @@ venv/
 .venv/
 src/nbv_cpp/
 src/perception_open3d/
+src/sample_nbv_behaviors/
+src/nrg_behaviors/
 .claude/
