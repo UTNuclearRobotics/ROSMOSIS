@@ -62,7 +62,16 @@ ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 # can't install it) -- the Python side needs the pip wheel. The C++ side
 # (nbv_cpp, open3d_conversions) is unrelated and handled below via the real
 # libopen3d-dev apt package, through rosdep.
-RUN pip install --no-cache-dir open3d
+#
+# numpy<2 is pinned explicitly and FIRST: an unpinned `pip install open3d`
+# pulls numpy 2.x transitively, which breaks every other Python node in the
+# workspace at runtime -- ROS's apt-provided tf_transformations/transforms3d
+# uses a numpy 1.x-only API (np.maximum_sctype, removed in 2.0), and open3d's
+# own transitive deps (sklearn, pandas, bottleneck) are pulled in as numpy
+# 1.x-ABI wheels that segfault/AttributeError under numpy 2.x ("_ARRAY_API not
+# found"). Pinning here forces pip to resolve open3d against 1.x instead.
+RUN pip install --no-cache-dir "numpy<2" \
+    && pip install --no-cache-dir open3d
 
 # ---- clone workspace (outer ROSMOSIS + the four nested repos) ----
 # Cloned fresh from remote so a param push is picked up without staging repos on
