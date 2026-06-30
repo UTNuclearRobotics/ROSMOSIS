@@ -1,0 +1,6 @@
+# Per-run console logs (stdout+stderr of each mission) are run records, not
+# source: keep them out of git. This file keeps data/run_logs/ in the repo
+# while ignoring every log written into it. Post-processing scripts live in
+# data/ (one level up) and are tracked normally.
+*
+!.gitignore

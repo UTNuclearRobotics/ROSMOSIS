@@ -93,14 +93,14 @@ changes are picked up by the in-build re-clone, not by this outer clone.
 ```bash
 cd ~/ROSMOSIS
 eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519     # if not already loaded
-docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:test0 .
+docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:<tag> .
 ```
 
 | Flag | Why |
 |---|---|
 | `--ssh default` | forwards your SSH agent into the build for the private-repo clones |
 | `--build-arg CACHEBUST=$(date +%s)` | **forces a fresh re-clone.** `$(date)` is unique each run, so the clone layer is never cached. **Omit this and Docker reuses the stale clone → your latest pushes are ignored.** |
-| `-t rosmosis:test0` | image tag; reuse it in `docker run` |
+| `-t rosmosis:<tag>` | image tag — **your choice** (`test0`, `cluster`, `v2`, ...). The examples below write `rosmosis:<tag>`; substitute the tag you built, and use the **same** tag in every `docker run`. The sweep scripts take it via `IMAGE=rosmosis:<tag> ./run_...sh`. |
 
 **The numpy pin (why the build constrains `numpy<1.24`).** open3d drags in a heavy
 pip ML stack that, unconstrained, upgrades numpy past what the rest of the workspace
@@ -120,7 +120,7 @@ still break the import.)
 ```bash
 docker run --rm --gpus all \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:test0 \
+  rosmosis:<tag> \
   ros2 launch demo_behaviors demo_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
       environment:=env_50x50_cluster_seabed \
@@ -135,7 +135,7 @@ change needed):
 ```bash
 docker run --rm --gpus all \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:test0 \
+  rosmosis:<tag> \
   ros2 launch baseline_mission baseline_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
       environment:=env_50x50_cluster_seabed bag_prefix:=boustrophedon_cluster
@@ -235,7 +235,7 @@ output namespace:
 docker run --rm --gpus all \
   -e ROS_DOMAIN_ID=1 \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:test0 \
+  rosmosis:<tag> \
   ros2 launch demo_behaviors demo_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
       environment:=env_50x50_cluster_seabed \
@@ -245,7 +245,7 @@ docker run --rm --gpus all \
 docker run --rm --gpus all \
   -e ROS_DOMAIN_ID=2 \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:test0 \
+  rosmosis:<tag> \
   ros2 launch demo_behaviors demo_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
       environment:=env_50x50_cluster_seabed \
@@ -279,12 +279,12 @@ cd ~/ROSMOSIS && git checkout experiment-docker
 
 # --- build (re-run after every push you want picked up) ---
 eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
-docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:test0 .
+docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:<tag> .
 
 # --- run (headless, persisted) ---
 docker run --rm --gpus all \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:test0 \
+  rosmosis:<tag> \
   ros2 launch demo_behaviors demo_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
       environment:=env_50x50_cluster_seabed \
