@@ -15,7 +15,7 @@ from rosbags.dataframe import get_dataframe
 from rosbags.typesys import Stores, get_types_from_msg, get_typestore
 
 # %% Parameters - set the run to analyze
-BAG_NAME = "boustrophedon_cluster_20260626_192732"
+BAG_NAME = "nbv_cone_alpha0.25_20260626_155710"
 M = 4   # total targets in the scene (box_count); undetected targets still count as CIR 0
 
 # %%
@@ -206,7 +206,30 @@ print("----------------------------------------------------\n")
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
-import tf_transformations
+
+
+def quaternion_matrix(q_xyzw):
+    """4x4 homogeneous rotation matrix from a quaternion in [x, y, z, w] order.
+
+    Drop-in for tf_transformations.quaternion_matrix (same arg convention), so
+    the analysis env stays ROS-free -- tf_transformations is a ROS-only apt
+    package and won't pip-install into the conda env.
+    """
+    x, y, z, w = q_xyzw
+    n = x * x + y * y + z * z + w * w
+    if n < 1e-12:
+        return np.identity(4)                       # degenerate/zero quaternion
+    s = 2.0 / n
+    xx, yy, zz = x * x * s, y * y * s, z * z * s
+    xy, xz, yz = x * y * s, x * z * s, y * z * s
+    wx, wy, wz = w * x * s, w * y * s, w * z * s
+    return np.array([
+        [1.0 - (yy + zz), xy - wz,         xz + wy,         0.0],
+        [xy + wz,         1.0 - (xx + zz), yz - wx,         0.0],
+        [xz - wy,         yz + wx,         1.0 - (xx + yy), 0.0],
+        [0.0,             0.0,             0.0,             1.0],
+    ])
+
 
 map_to_ned_matrix = np.eye(4)
 raw_ned_positions = []
@@ -222,7 +245,7 @@ with AnyReader([bag_dir], default_typestore=typestore) as reader:
             if t.header.frame_id == 'map' and t.child_frame_id == 'ned':
                 q = t.transform.rotation
                 trans = t.transform.translation
-                map_to_ned_matrix = tf_transformations.quaternion_matrix([q.x, q.y, q.z, q.w])
+                map_to_ned_matrix = quaternion_matrix([q.x, q.y, q.z, q.w])
                 map_to_ned_matrix[:3, 3] = [trans.x, trans.y, trans.z]
 
     # 2. Fetch dynamic ned -> base_link transforms
