@@ -91,21 +91,24 @@ launch_run() {
 bar() {
     local done="$1" total="$2" w=10 f i out=""
     (( total > 0 )) || total=1
-    f=$(( done * w / total )); (( f > w )) && f=w
-    for ((i=0; i<w; i++)); do (( i < f )) && out+="#" || out+="-"; done
+    f=$(( done * w / total ))
+    if (( f > w )); then f=w; fi
+    for ((i=0; i<w; i++)); do if (( i < f )); then out+="#"; else out+="-"; fi; done
     printf "[%s]" "$out"
 }
 
 # one compact status line for a mission log: mapped bar + detected + phase.
 # mapped = distinct target_N.ply saved (the goal); detected = ids ever queued.
+# NB: `local X=$(...)` is deliberate -- it masks the grep exit status so an empty
+# match (nothing mapped yet) can't trip `set -e` and kill the sweep.
 mission_progress() {
-    local log="$1" label mapped detected phase
-    label=$(basename "$log" | grep -oE "alpha[0-9.]+" || echo run)
-    mapped=$(grep -oE "target_[0-9]+\.ply" "$log" 2>/dev/null | grep -oE "[0-9]+" | sort -u | wc -l)
-    detected=$( { grep -oE "ids=\[[^]]*\]" "$log"; grep -oE "target_[0-9]+\.ply" "$log"; } 2>/dev/null \
-                | grep -oE "[0-9]+" | sort -u | wc -l )
-    phase=$(grep -E "Saved model|Saturation reached|Conclude policy RUNNING|Set views RUNNING|Next search pose" "$log" 2>/dev/null \
-            | tail -1 | sed -E 's/.*\]: //; s/ *$//')
+    local log="$1"
+    local label=$(basename "$log" | grep -oE "alpha[0-9.]+" || echo run)
+    local mapped=$(grep -oE "target_[0-9]+\.ply" "$log" 2>/dev/null | grep -oE "[0-9]+" | sort -u | wc -l)
+    local detected=$( { grep -oE "ids=\[[^]]*\]" "$log"; grep -oE "target_[0-9]+\.ply" "$log"; } 2>/dev/null \
+                      | grep -oE "[0-9]+" | sort -u | wc -l )
+    local phase=$(grep -E "Saved model|Saturation reached|Conclude policy RUNNING|Set views RUNNING|Next search pose" "$log" 2>/dev/null \
+                  | tail -1 | sed -E 's/.*\]: //; s/ *$//')
     printf "   %-10s %s mapped %d/%d | detected %d/%d | %s\n" \
            "$label" "$(bar "$mapped" "$M_TARGETS")" "$mapped" "$M_TARGETS" "$detected" "$M_TARGETS" "${phase:-navigating}"
 }
@@ -115,7 +118,9 @@ monitored_wait() {
     (( ${#BATCH_PIDS[@]} )) || return 0
     while :; do
         local alive=0 pid
-        for pid in "${BATCH_PIDS[@]}"; do kill -0 "$pid" 2>/dev/null && { alive=1; break; }; done
+        for pid in "${BATCH_PIDS[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then alive=1; break; fi
+        done
         echo "-- progress $(date +%H:%M:%S) --"
         for log in "${BATCH_LOGS[@]}"; do mission_progress "$log"; done
         (( alive )) || break
