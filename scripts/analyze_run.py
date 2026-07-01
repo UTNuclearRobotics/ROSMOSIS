@@ -15,7 +15,7 @@ from rosbags.dataframe import get_dataframe
 from rosbags.typesys import Stores, get_types_from_msg, get_typestore
 
 # %% Parameters - set the run to analyze
-BAG_NAME = "nbv_cone_alpha0.25_20260626_155710"
+BAG_NAME = "nbv_cone_alpha0.75_20260630_234734"
 M = 4   # total targets in the scene (box_count); undetected targets still count as CIR 0
 
 # %%

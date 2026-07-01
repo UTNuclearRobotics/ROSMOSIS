@@ -141,13 +141,17 @@ def generate_launch_description():
                        '--frame-id', 'sonar', '--child-frame-id', 'sonar_optical'],
         ),
 
-        # Sensor model: scene mesh visualisation
+        # Sensor model: scene mesh visualisation (RViz-only). Publishes a
+        # TRIANGLE_LIST terrain marker whose size scales linearly with area, so
+        # it gets heavy at full scale; nothing but RViz consumes it. Gate on
+        # start_rviz so headless runs skip it entirely.
         Node(
             package='sensor_model',
             executable='meshes_rviz',
             name='meshes_rviz',
             parameters=[sensor_param_config],
             arguments=['--ros-args', '--log-level', log_level],
+            condition=IfCondition(start_rviz)
         ),
 
         # Sensor model: FLS depth image publisher

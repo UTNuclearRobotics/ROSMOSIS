@@ -5,13 +5,13 @@ server (the reference machine is `nrg-alpha`, an Exxact Tensor TS4, Ubuntu 22.04
 RTX A6000). It is the operational companion to [README.md](README.md): the README
 documents the workspace, launch args, and mission tuning; this guide documents
 **SSH access, the image build/run lifecycle, data persistence, parallel experiments,
-visualization, and offline analysis** — everything specific to running headless on a
+visualization, and offline analysis**: everything specific to running headless on a
 shared server rather than on your laptop.
 
 > **Edit locally, push, rebuild on the server.** The Dockerfile re-clones every repo
 > from GitHub on each build (see [The self-assembling image](#the-self-assembling-image)),
 > so the server only ever sees *pushed* commits. Never edit source directly on the
-> server expecting it to survive a rebuild — it won't. The canonical loop is:
+> server expecting it to survive a rebuild; it won't. The canonical loop is:
 > **edit on laptop → `git push` → `docker build` on server**.
 
 ---
@@ -36,7 +36,7 @@ ssh-add ~/.ssh/id_ed25519        # the key registered with your GitHub account
 ssh-add -l                       # verify it's loaded
 ```
 
-If `git@github.com` is unreachable, test with `ssh -T git@github.com` — it should
+If `git@github.com` is unreachable, test with `ssh -T git@github.com`; it should
 greet you by GitHub username.
 
 ### VS Code Remote-SSH (recommended for browsing results + analysis)
@@ -48,7 +48,7 @@ greet you by GitHub username.
 
 Use the VS Code window for: browsing `$HOME/ROSMOSIS/data/`, running the analysis
 notebook with inline matplotlib (see [§5](#5-analyzing-results)), and opening a
-server-side terminal. **Still do all source edits + pushes from your laptop** —
+server-side terminal. **Still do all source edits + pushes from your laptop**:
 direct server edits get wiped on the next `docker build`.
 
 > **No drag-and-drop to local.** VS Code Remote-SSH cannot drag files to your
@@ -83,7 +83,7 @@ cd ROSMOSIS
 git checkout experiment-docker
 ```
 
-Re-run `git pull` here **only when the Dockerfile itself changes** — `src/` and param
+Re-run `git pull` here **only when the Dockerfile itself changes**; `src/` and param
 changes are picked up by the in-build re-clone, not by this outer clone.
 
 ---
@@ -129,7 +129,7 @@ docker run --rm --gpus all \
 
 ### Boustrophedon baseline
 
-The same image runs the baseline — it's just a different launch file (no source
+The same image runs the baseline: it's just a different launch file (no source
 change needed):
 
 ```bash
@@ -146,7 +146,8 @@ docker run --rm --gpus all \
 | Flag | Why |
 |---|---|
 | `--rm` | removes the container after exit, so it doesn't pile up alongside every run. |
-| `--gpus all` | exposes the GPU for nbv_cpp's CUDA TSDF/ray-cast kernels. |
+| `--gpus all` | exposes **all** GPUs to the container. Fine for a **single** run. nbv_cpp only ever uses the default device (device 0), so with `all` it lands on the first visible card — and if you launch several `--gpus all` containers at once, they **all pile onto that same card** and contend. |
+| `--gpus '"device=N"'` | exposes **only** physical GPU `N`, renumbered to device 0 inside the container. This is how you **pin one mission to one card** — use it (not `all`) for concurrent runs so each mission gets a dedicated GPU. Note the nested quotes: bash strips the outer `'...'`, Docker needs the inner `"device=N"`. |
 | `-v "$HOME/ROSMOSIS/data:/workspace/data"` | **bind mount**, so bags + reconstructions land on the host instead of only inside the container's writable layer. Maps the server's `data/` onto the container's `/workspace/data`. Use an **absolute** host path (`$HOME` expands to one). |
 | launch args | standard ROSMOSIS args — see the [README launch table](README.md#key-launch-parameters). `start_rviz:=false debug_gui:=false` ⇒ headless (no display needed). |
 
@@ -154,14 +155,14 @@ docker run --rm --gpus all \
 
 - **`start_rviz:=false`** and **`debug_gui:=false`** are required for headless / batch
   / parallel runs. Live RViz over SSH doesn't work on this server (X forwarding fails
-  on indirect GLX) — visualize offline instead by pulling down the output PLY meshes
+  on indirect GLX); visualize offline instead by pulling down the output PLY meshes
   (see [§5](#5-analyzing-results)). Live BT monitoring is still possible via Groot2 on
   TCP 1667, independent of X11 (see the README's *Live Monitoring* section).
 - **`record:=true`** writes the MCAP bag. The container has
   `ros-humble-rosbag2-storage-mcap` installed.
-- **`bag_prefix`** must be **unique per run** — a timestamp is appended, but distinct
+- **`bag_prefix`** must be **unique per run**: a timestamp is appended, but distinct
   prefixes keep runs (and parallel experiments) from colliding in the data dir.
-- **`alpha`** (NBV only) is the CI-NBV cost weight — the experiment-sweep knob; no XML
+- **`alpha`** (NBV only) is the CI-NBV cost weight, the experiment-sweep knob; no XML
   edit needed.
 - **`environment`** selects the scene yaml (default `environment_basic` if omitted —
   see the note in [§4](#4-running-an-experiment) above). Set this explicitly every
@@ -185,7 +186,7 @@ data/
 ```
 
 The bag and the reconstruction dir share the same timestamped name, so a run's bag and
-meshes are co-located. Runs **accumulate** — nothing is overwritten.
+meshes are co-located. Runs **accumulate**; nothing is overwritten.
 
 ### Pulling files to your laptop
 
@@ -204,7 +205,7 @@ scp -r <user>@<server>:~/ROSMOSIS/data/* ./data/
 scp -r <user>@<server>:~/ROSMOSIS/data/reconstructions/<run> .
 ```
 
-**Pull everything, not just one subfolder** — grab all of `data/` so bags *and*
+**Pull everything, not just one subfolder**: grab all of `data/` so bags *and*
 reconstructions (and plots) come down together; don't cherry-pick one and lose the
 matching run data.
 
@@ -226,47 +227,42 @@ so each pull just adds the new run folders.
 
 ## 6. Running experiments in parallel
 
-Each experiment is **one container with its own launch args** — a clean isolation
-model. To run several at once on the shared host, give each its own ROS graph and
-output namespace:
+`run_CINBV_experiment.sh` sweeps alpha in {0, 0.25, 0.5, 0.75, 1.0}. It runs missions
+in **batches of `MAX_PARALLEL` (default 3), one per GPU**, with staggered startup, a
+dedicated CPU block + resource caps per mission, and a distinct `ROS_DOMAIN_ID` each.
+It prints live `mapped X/M` progress per mission while a batch runs.
+`run_boustrophedon_experiment.sh` is the single CPU-only baseline.
+
+Host-side scripts (`git pull` + `chmod +x`, **no rebuild**):
 
 ```bash
-# Experiment A
-docker run --rm --gpus all \
-  -e ROS_DOMAIN_ID=1 \
-  -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:<tag> \
-  ros2 launch demo_behaviors demo_mission_launch.py \
-      start_rviz:=false debug_gui:=false record:=true \
-      environment:=env_50x50_cluster_seabed \
-      alpha:=0.25 bag_prefix:=nbv_alpha0.25 &
+chmod +x run_CINBV_experiment.sh run_boustrophedon_experiment.sh
 
-# Experiment B (different domain ID + different bag prefix)
-docker run --rm --gpus all \
-  -e ROS_DOMAIN_ID=2 \
-  -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:<tag> \
-  ros2 launch demo_behaviors demo_mission_launch.py \
-      start_rviz:=false debug_gui:=false record:=true \
-      environment:=env_50x50_cluster_seabed \
-      alpha:=0.75 bag_prefix:=nbv_alpha0.75 &
+# 5-alpha sweep, 3-at-a-time
+IMAGE=rosmosis:<tag> M_TARGETS=10 ENVIRONMENT=env_50x50_cluster_seabed \
+  ./run_CINBV_experiment.sh
+
+# boustrophedon baseline (CPU-only)
+IMAGE=rosmosis:<tag> ENVIRONMENT=env_50x50_cluster_seabed \
+  ./run_boustrophedon_experiment.sh
 ```
 
-Rules for parallel runs:
+Env-overridable knobs:
 
-- **Distinct `ROS_DOMAIN_ID` per container** (`-e ROS_DOMAIN_ID=N`) so their DDS graphs
-  don't cross-talk. Containers are isolated network-wise by default (don't use
-  `--net=host` for parallel runs — that shares the host network and re-introduces
-  cross-talk; `--net=host` was only ever needed for X forwarding, which we've abandoned).
-- **Distinct `bag_prefix` per container** so outputs don't collide in the shared
-  `data/` mount.
-- **GPU:** `--gpus all` lets every container see the GPU; they time-share it. For a
-  cleaner split you can pin one GPU per container with `--gpus '"device=0"'` etc. (the
-  A6000 box has the GPUs to spread across).
+| Var | Default | Meaning |
+|---|---|---|
+| `IMAGE` | (required) | built image tag |
+| `MAX_PARALLEL` | 3 | concurrent missions; must be ≤ 3 (1 per GPU) |
+| `CORES_PER` | 32 | dedicated cores per mission (`--cpuset-cpus`) |
+| `OMP_THREADS` | 10 | OpenMP pool for the Open3D TSDF work |
+| `MEM_LIMIT` | 16g | RAM ceiling (backstop; ~9g used) |
+| `M_TARGETS` | 4 | scene target count, for the progress bar |
+| `STAGGER` | 15 | seconds between launches in a batch |
+| `ENVIRONMENT` | env_50x50_cluster_seabed | scene yaml |
 
-A shell script that loops over an `alpha` (or environment) list, assigning each run an
-incrementing domain ID and a matching `bag_prefix`, is the natural way to launch a
-sweep.
+**Batch ≤3, not all-5:** only 3 GPUs (so no card is shared), and the host must keep
+cores, so running 5 at once oversubscribes and starves the wall-clock sim, which
+corrupts timing *and* reconstructions.
 
 ---
 
@@ -281,8 +277,8 @@ cd ~/ROSMOSIS && git checkout experiment-docker
 eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
 docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:<tag> .
 
-# --- run (headless, persisted) ---
-docker run --rm --gpus all \
+# --- single run (headless, persisted) ---
+docker run --rm --gpus '"device=0"' \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
   rosmosis:<tag> \
   ros2 launch demo_behaviors demo_mission_launch.py \
@@ -290,6 +286,9 @@ docker run --rm --gpus all \
       environment:=env_50x50_cluster_seabed \
       alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25
 
+# --- alpha sweep (batched 1-per-GPU, live progress) ---
+IMAGE=rosmosis:<tag> M_TARGETS=10 ./run_CINBV_experiment.sh
+
 # --- pull ALL results down (from a LOCAL terminal, merges into ./data) ---
-rsync -avz <user>@<server>:~/ROSMOSIS/data/ ./data/
+rsync -avzP <user>@<server>:~/ROSMOSIS/data/ ./data/
 ```
