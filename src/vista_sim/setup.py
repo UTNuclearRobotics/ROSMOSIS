@@ -12,8 +12,8 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # Dynamically include all launch files in the launch directory
-        (os.path.join('share', package_name, 'launch'), glob('launch/*')),
+        # Include launch files (specific glob so __pycache__ / dirs aren't matched)
+        (os.path.join('share', package_name, 'launch'), glob('launch/*launch.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.rviz'))
     ],
     install_requires=['setuptools'],

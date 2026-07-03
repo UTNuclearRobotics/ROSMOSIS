@@ -100,10 +100,10 @@ def generate_cone(
 if __name__ == "__main__":
     # Test with cone-equivalent params (mount_angle/clearance shared with helix)
     pose_array = generate_cone(
-        num_rings=4,
-        clearance=5.0,
-        cone_height=15.0,
-        delta_theta_deg=45.0,
+        num_rings=3,
+        clearance=15.0,
+        cone_height=30.0,
+        delta_theta_deg=36.0,
         mount_angle_deg=20.0
     )
 

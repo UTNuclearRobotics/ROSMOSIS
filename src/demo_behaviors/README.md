@@ -15,7 +15,7 @@ This package contains:
 This package depends on three external repos that need to be cloned into the workspace:
 
 ```bash
-cd ~/projects/VISTA_ws/src
+cd ~/projects/rosmosis_ws/src
 
 # 1. sample_nbv_behaviors (provides the nbv_behaviors package).
 # Switch to the rosmosis branch — main depends on magellan_interfaces, which is not public.
@@ -33,7 +33,7 @@ Then return to the workspace root and build everything.
 ### Build
 
 ```bash
-cd ~/projects/VISTA_ws
+cd ~/projects/rosmosis_ws
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
@@ -89,10 +89,12 @@ All parameters are declared in [launch/demo_mission_launch.py](launch/demo_missi
 
 | Parameter | Default | Description |
 |---|---|---|
-| `environment` | `environment_basic` | Environment yaml name from sensor_model/config/ |
-| `start_rviz` | `true` | Start RViz with the simulation |
+| `environment` | `env_1000x1000_cluster_seabed` | Environment yaml name from sensor_model/config/ |
+| `start_rviz` | `true` | Start RViz with the simulation. Also gates the Bayesian belief-grid publish (headless runs skip the 2 Hz full-grid publish). |
 | `drift_velocity` | `0.25` | Idle drift velocity when not navigating (m/s) |
-| `constant_velocity` | `0.5` | Navigation velocity for Dubins paths (m/s) |
+| `constant_velocity` | `1.5` | Navigation velocity for Dubins paths (m/s). ARL full-scale spec. |
+| `turn_radius_m` | `10.0` | Vehicle minimum turn radius (m); planner inflates ~20%. Forwarded to vista_sim. ARL full-scale spec. |
+| `max_pitch_deg` | `15.0` | Vehicle maximum pitch angle (deg) for planning and dynamics. Forwarded to vista_sim. |
 | `time_step` | `0.1` | Simulation time step (s) |
 | `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) applied to demo_bt, helix_service, nbv_server, and all vista_sim Python nodes |
 | `record` | `false` | Record a mission rosbag for offline analysis (see [Recording a run](#recording-a-run)) |
@@ -106,7 +108,7 @@ reads it as `{alpha}`. So you sweep it purely from the command line, no XML edit
 
 ```bash
 ros2 launch demo_behaviors demo_mission_launch.py \
-    environment:=env_50x50_cluster_seabed record:=true \
+    environment:=env_1000x1000_cluster_seabed record:=true \
     alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25 debug_gui:=false
 ```
 

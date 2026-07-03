@@ -38,7 +38,7 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     # ---- Launch arguments (mission-level config) ----
     environment_arg = DeclareLaunchArgument(
-        'environment', default_value='environment_basic',
+        'environment', default_value='env_1000x1000_cluster_seabed',
         description='Environment yaml name (no extension) from sensor_model/config/'
     )
     start_rviz_arg = DeclareLaunchArgument(
@@ -50,8 +50,16 @@ def generate_launch_description():
         description='Idle drift velocity when not navigating (m/s)'
     )
     constant_velocity_arg = DeclareLaunchArgument(
-        'constant_velocity', default_value='0.5',
+        'constant_velocity', default_value='1.5',
         description='Navigation velocity for Dubins path following (m/s)'
+    )
+    turn_radius_m_arg = DeclareLaunchArgument(
+        'turn_radius_m', default_value='10.0',
+        description='Vehicle minimum turn radius (m); planner inflates ~20%. ARL full-scale spec.'
+    )
+    max_pitch_deg_arg = DeclareLaunchArgument(
+        'max_pitch_deg', default_value='15.0',
+        description='Vehicle maximum pitch angle (deg) for planning and dynamics.'
     )
     time_step_arg = DeclareLaunchArgument(
         'time_step', default_value='0.1',
@@ -87,6 +95,8 @@ def generate_launch_description():
     start_rviz = LaunchConfiguration('start_rviz')
     drift_velocity = LaunchConfiguration('drift_velocity')
     constant_velocity = LaunchConfiguration('constant_velocity')
+    turn_radius_m = LaunchConfiguration('turn_radius_m')
+    max_pitch_deg = LaunchConfiguration('max_pitch_deg')
     time_step = LaunchConfiguration('time_step')
     log_level = LaunchConfiguration('log_level')
 
@@ -102,6 +112,8 @@ def generate_launch_description():
             'start_rviz': start_rviz,
             'drift_velocity': drift_velocity,
             'constant_velocity': constant_velocity,
+            'turn_radius_m': turn_radius_m,
+            'max_pitch_deg': max_pitch_deg,
             'time_step': time_step,
             'log_level': log_level,
         }.items()
@@ -145,6 +157,9 @@ def generate_launch_description():
         executable='bayesian_search_server',
         name='bayesian_search_server',
         output='screen',
+        # Publish the RViz belief map only when RViz is up; headless/batch runs
+        # (start_rviz:=false) skip the 2 Hz full-grid publish entirely.
+        parameters=[{'publish_belief': ParameterValue(start_rviz, value_type=bool)}],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -229,6 +244,8 @@ def generate_launch_description():
         start_rviz_arg,
         drift_velocity_arg,
         constant_velocity_arg,
+        turn_radius_m_arg,
+        max_pitch_deg_arg,
         time_step_arg,
         log_level_arg,
         record_arg,

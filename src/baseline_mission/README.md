@@ -21,7 +21,7 @@ source install/setup.bash
 ### Launch
 
 ```bash
-ros2 launch baseline_mission baseline_mission_launch.py environment:=env_50x50_centroidBox
+ros2 launch baseline_mission baseline_mission_launch.py environment:=env_1000x1000_cluster_seabed
 ```
 
 This starts:
@@ -54,7 +54,7 @@ The mount angle does **not** affect the swath/lane spacing (the FOV does); it on
 
 ### Frame convention
 
-Poses are in **NED** (matches the Dubins action server): `position.x = north`, `position.y = east`, `position.z = depth` (down +); `yaw = 0` heads north, `yaw = pi` heads south. The vehicle spawns at `Eta(-5, 0, 0, yaw=0)` (shared with the NBV mission), just south of the ROI on the first lane.
+Poses are in **NED** (matches the Dubins action server): `position.x = north`, `position.y = east`, `position.z = depth` (down +); `yaw = 0` heads north, `yaw = pi` heads south. The vehicle spawns at `Eta(-10, 0, 0, yaw=0)` (shared with the NBV mission), just south of the first lane (which starts at north ≈ -7.58 m at clearance=15) for a clean northward running start.
 
 ## Parameters
 
@@ -62,10 +62,12 @@ Poses are in **NED** (matches the Dubins action server): `position.x = north`, `
 
 | Parameter | Default | Description |
 |---|---|---|
-| `environment` | `environment_basic` | Environment yaml name (no extension) from `sensor_model/config/` |
+| `environment` | `env_1000x1000_cluster_seabed` | Environment yaml name (no extension) from `sensor_model/config/` |
 | `start_rviz` | `true` | Start RViz with the simulation |
 | `drift_velocity` | `0.25` | Idle drift velocity when not navigating (m/s) |
-| `constant_velocity` | `0.5` | Navigation velocity for Dubins paths (m/s) |
+| `constant_velocity` | `1.5` | Navigation velocity for Dubins paths (m/s). ARL full-scale spec. |
+| `turn_radius_m` | `10.0` | Vehicle minimum turn radius (m); planner inflates ~20%. Forwarded to vista_sim. ARL full-scale spec. |
+| `max_pitch_deg` | `15.0` | Vehicle maximum pitch angle (deg) for planning and dynamics. Forwarded to vista_sim. |
 | `time_step` | `0.1` | Simulation time step (s) |
 | `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) |
 | `record` | `false` | Record a survey rosbag (see [Recording a run](#recording-a-run)) |
@@ -81,22 +83,22 @@ These are members at the top of `__init__`, not launch args. They must stay cons
 | `fov_x_deg` | `150.0` | Horizontal (cross-track) FOV; must match the sensor model (`compute_intrinsics.py`) |
 | `fov_y_deg` | `25.0` | Vertical (along-track) FOV |
 | `mount_angle_deg` | `20.0` | Sensor down-tilt; must match the URDF `fls_mount_angle_deg` |
-| `clearance` | `5.0` | Altitude above the seabed (m); `survey_depth` is derived from it |
-| `roi_north_min/max`, `roi_east_min/max` | `0 / 50` | Survey rectangle (NED m); matches the 50x50 arena |
+| `clearance` | `15.0` | Altitude above the seabed (m); `survey_depth` is derived from it. ARL full-scale spec (50 m seabed − 15 m = 35 m survey depth). |
+| `roi_north_min/max`, `roi_east_min/max` | `0 / 1000` | Survey rectangle (NED m); matches the 1000x1000 arena in bayesian_search |
 
 ## Recording a run
 
 Pass `record:=true` to capture a rosbag for offline analysis (CIR, coverage, detection timing):
 
 ```bash
-ros2 launch baseline_mission baseline_mission_launch.py environment:=env_50x50_centroidBox record:=true
+ros2 launch baseline_mission baseline_mission_launch.py environment:=env_1000x1000_cluster_seabed record:=true
 ```
 
 Each run is saved as its **own directory** under `data/bags/`, named `<bag_prefix>_<timestamp>/`. The timestamp (`YYYYMMDD_HHMMSS`) is **always appended automatically**, so runs never collide. `bag_prefix` is just a human-readable label on the front; it defaults to `boustrophedon`, so the command above produces e.g. `data/bags/boustrophedon_20260617_151640/`. Override it to tag the run's configuration:
 
 ```bash
-ros2 launch baseline_mission baseline_mission_launch.py environment:=env_50x50_centroidBox record:=true bag_prefix:=boustrophedon_clearance5
-# -> data/bags/boustrophedon_clearance5_20260617_151640/
+ros2 launch baseline_mission baseline_mission_launch.py environment:=env_1000x1000_cluster_seabed record:=true bag_prefix:=boustrophedon_clearance15
+# -> data/bags/boustrophedon_clearance15_20260617_151640/
 ```
 
 Inside each run directory you get the `.mcap` file plus a `metadata.yaml` (written last, on clean close — its presence means the bag finalized correctly).

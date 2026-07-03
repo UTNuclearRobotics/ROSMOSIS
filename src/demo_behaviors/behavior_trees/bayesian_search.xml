@@ -17,7 +17,7 @@
                 <!-- ForceSuccess: an unreachable cell shouldn't break the loop;
                      just move on to the next argmax pick. -->
                 <ForceSuccess>
-                    <DubinsClient planning_pose="{search_pose}" timeout_sec="300"/>
+                    <DubinsClient planning_pose="{search_pose}" timeout_sec="1500"/>
                 </ForceSuccess>
             </Sequence>
         </Repeat>

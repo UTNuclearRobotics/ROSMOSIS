@@ -15,8 +15,13 @@ from rosbags.dataframe import get_dataframe
 from rosbags.typesys import Stores, get_types_from_msg, get_typestore
 
 # %% Parameters - set the run to analyze
-BAG_NAME = "nbv_cone_alpha0.75_20260630_234734"
-M = 4   # total targets in the scene (box_count); undetected targets still count as CIR 0
+BAG_NAME = "test_20260702_225148"   # CHANGE THIS to the run folder under data/bags/ you want to analyze
+M = 10                   # CHANGE THIS to scene target count (box_count); CIR_total denominator, undetected targets count as 0
+
+# Fail fast if the two params above were left unset, so a run can't be silently
+# analyzed against the placeholder bag or a wrong CIR_total denominator.
+if BAG_NAME == "placeholder" or M is None:
+    raise ValueError("Set BAG_NAME (run folder under data/bags/) and M (scene target count) in analyze_run.py before running.")
 
 # %%
 # Find the repo root (this file lives in scripts/; the .msg is under src/)

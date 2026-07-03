@@ -7,7 +7,7 @@ Simulation package for UUV kinematics with Dubins path planning and drift dynami
 ### Build
 
 ```bash
-cd ~/projects/VISTA_ws
+cd ~/projects/rosmosis_ws
 colcon build --packages-up-to demo_behaviors --symlink-install
 source install/setup.bash
 ```
@@ -41,6 +41,7 @@ The `environment` argument selects a config yaml from `sensor_model/config/` (om
 | `env_50x50_centroidBox` | Flat 50×50m arena, single box offset from centroid |
 | `env_50x50_cluster` | Flat 50×50m arena, three boxes clustered mid-arena + one corner |
 | `env_50x50_cluster_seabed` | Procedural seabed with divot at cluster site, same box layout |
+| `env_1000x1000_cluster_seabed` | **ARL full-scale.** 1000×1000 m procedural rolling seabed, 10 lobster pots in 5 isolated clusters (tight/spread/collinear/near-corner/flat-control), 200 m cluster separation |
 
 ### Send a Goal (separate terminal)
 
@@ -80,9 +81,9 @@ Expected: ~10 Hz, single publisher (`vehicle_sim_server`).
 |-----------|---------|-------------|
 | `frame_id` | `ned` | TF parent frame for `base_link` |
 | `time_step` | `0.1` | Simulation dt (seconds) |
-| `constant_velocity` | `0.5` | Navigation speed along Dubins paths (m/s) |
+| `constant_velocity` | `1.5` | Navigation speed along Dubins paths (m/s). ARL full-scale spec. |
 | `drift_velocity` | `0.25` | Idle drift speed between goals (m/s) |
-| `turn_radius_m` | `5.0` | Vehicle minimum turn radius (m). The planner plans at **1.2×** this value so paths stay within the vehicle's yaw-rate limit and remain trackable (see note below). |
+| `turn_radius_m` | `10.0` | Vehicle minimum turn radius (m). ARL full-scale spec. The planner plans at **1.2×** this value so paths stay within the vehicle's yaw-rate limit and remain trackable (see note below). |
 | `max_pitch_deg` | `15.0` | Vehicle maximum pitch angle (deg); shared by the planner and the dynamics model |
 | `log_level` | `info` | ROS log level for all Python nodes (debug/info/warn/error/fatal) |
 

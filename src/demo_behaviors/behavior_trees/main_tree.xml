@@ -24,7 +24,7 @@
         <!-- Bayesian Search -->
         <CheckForServers timeout="10" servers="/bayesian_search_server/get_next_search_pose"/>
 
-        <Repeat num_cycles = "4">
+        <Repeat num_cycles = "10">
             <Parallel success_count="1" failure_count="1">
                 <Repeat num_cycles = "-1">
                     <DetectAndSortQueue geoID_write="{queue}" completed_ID_read="{completed_id}" visited_ID_write= "{visited_targets}"/>
@@ -43,7 +43,7 @@
                          ReactiveSequence re-ticks isWithinTimeLimit every tick, so
                          the search ends the moment the budget is exceeded. -->
                     <ReactiveSequence>
-                        <isWithinTimeLimit hours="2"/>
+                        <isWithinTimeLimit hours="24"/>
                         <SubTree ID="BayesianSearch" _autoremap="true"/>
                     </ReactiveSequence>
                 </ReactiveFallback>

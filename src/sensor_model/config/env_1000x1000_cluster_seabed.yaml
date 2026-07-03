@@ -1,0 +1,45 @@
+depth_publisher:
+  ros__parameters:
+    box_count: 10
+    box_size: [1.0, 1.0, 0.5]
+    box_positions:
+      # Island A -- tight cluster of 3 (~25 m apart) in a depression @ (300,300)
+      box_0: [288.0, 293.0, -1.858]
+      box_1: [312.0, 293.0, -1.489]
+      box_2: [300.0, 314.0, -1.851]
+      # Island B -- spread collection of 3 (~50 m apart) in a depression @ (700,700)
+      box_3: [675.0, 686.0, -2.308]
+      box_4: [725.0, 686.0, -2.067]
+      box_5: [700.0, 729.0, -2.102]
+      # Island C -- collinear pair of 2 (40 m apart) in a depression @ (500,500)
+      box_6: [480.0, 500.0, -1.916]
+      box_7: [520.0, 500.0, -1.855]
+      # Island D -- lone pot in a deeper divot (hardest case) @ (100,900)
+      box_8: [100.0, 900.0, -3.344]
+      # Island E -- lone pot on flat ground (occlusion control) @ (900,100)
+      box_9: [900.0, 100.0, -0.127]
+    terrain:
+      file_path: assets/seabed_1000x1000m.obj
+
+meshes_rviz:
+  ros__parameters:
+    box_count: 10
+    box_size: [1.0, 1.0, 0.5]
+    box_positions:
+      # Island A -- tight cluster of 3 (~25 m apart) in a depression @ (300,300)
+      box_0: [288.0, 293.0, -1.858]
+      box_1: [312.0, 293.0, -1.489]
+      box_2: [300.0, 314.0, -1.851]
+      # Island B -- spread collection of 3 (~50 m apart) in a depression @ (700,700)
+      box_3: [675.0, 686.0, -2.308]
+      box_4: [725.0, 686.0, -2.067]
+      box_5: [700.0, 729.0, -2.102]
+      # Island C -- collinear pair of 2 (40 m apart) in a depression @ (500,500)
+      box_6: [480.0, 500.0, -1.916]
+      box_7: [520.0, 500.0, -1.855]
+      # Island D -- lone pot in a deeper divot (hardest case) @ (100,900)
+      box_8: [100.0, 900.0, -3.344]
+      # Island E -- lone pot on flat ground (occlusion control) @ (900,100)
+      box_9: [900.0, 100.0, -0.127]
+    terrain:
+      file_path: assets/seabed_1000x1000m.obj

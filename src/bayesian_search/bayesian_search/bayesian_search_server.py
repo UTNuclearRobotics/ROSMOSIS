@@ -37,10 +37,10 @@ class BayesianSearchServer(Node):
         self.visited_grid: np.ndarray = None  # boolean swept mask, n x x with visited entry (i,j) set to True
 
         # ---- Grid metadata ----
-        # Arena size is the physical search region (eventually 200x200m to match
-        # the seabed asset). Grid shape is computed from arena_size / resolution.
+        # Arena size is the physical search region (1000x1000m to match the
+        # seabed asset). Grid shape is computed from arena_size / resolution.
         self.grid_resolution: float = 1.0     # m per cell
-        self.arena_size: tuple = (50.0, 50.0) # (width_x, length_y) in m
+        self.arena_size: tuple = (1000.0, 1000.0) # (width_x, length_y) in m
         self.grid_origin: tuple = (0.0, 0.0)  # (x_min, y_min) in map frame
         
         #in map frame, x corresponds to j index, and y corresponds to i.
@@ -59,8 +59,7 @@ class BayesianSearchServer(Node):
             self.grid_origin[0] + self.arena_size[0] / 2.0,
             self.grid_origin[1] + self.arena_size[1] / 2.0,
         )  # (cx, cy) in map frame
-        self.prior_sigma: float = 8.0              # m
-        # cluster bump sigma/amplitude are passed as keyword args to gaussian_bump
+        # prior + cluster bump sigma/amplitude are passed as keyword args to gaussian_bump
         # at the call site (readability), not stored as members.
 
         # ---- FLS viewing geometry (for the returned search pose) ----
@@ -69,12 +68,12 @@ class BayesianSearchServer(Node):
         # vehicle's altitude above the seafloor. The forward-tilted FLS means the
         # vehicle sits x_adjustment = clearance / tan(mount_angle) behind (north of)
         # the cell so the centre beam lands on it. Search poses are north-facing.
-        self.search_depth: float = 5.0              # NED depth the vehicle holds (m)
+        self.search_depth: float = 35.0             # NED depth the vehicle holds (m); 50 m seafloor - 15 m clearance
         self.mount_angle: float = np.deg2rad(20.0)  # FLS down-tilt from horizontal
         # Approximate-Dubins cost: distance + turning_radius * |yaw_diff|. The
         # turning_radius (m/rad) converts heading error into equivalent arc length;
         # set it to the Dubins planner's minimum turning radius.
-        self.turning_radius: float = 3.0
+        self.turning_radius: float = 10.0
         self.seafloor_depth: float = None           # resolved by set_geometry via tf
         self.clearance: float = None                # resolved by set_geometry
         self.x_adjustment: float = None             # resolved by set_geometry
@@ -108,8 +107,14 @@ class BayesianSearchServer(Node):
             BayesianSearch, '~/get_next_search_pose', self.get_next_pose_callback
         )
 
-        # publish the belief as an OccupancyGrid for RViz (visualization only)
-        self.belief_timer = self.create_timer(0.5, self.publish_belief)
+        # Belief-map publishing is RViz-only (see publish_belief) and costs a
+        # full-grid normalize + tolist at 2 Hz, wasted on headless/batch runs.
+        # Gate the timer on a parameter so those runs skip it entirely. Defaults
+        # True, so standalone runs are unchanged; only the timer is gated -- the
+        # grid, service, and search logic are untouched either way.
+        self.declare_parameter('publish_belief', True)
+        if self.get_parameter('publish_belief').value:
+            self.belief_timer = self.create_timer(0.5, self.publish_belief)
 
         self._init_grids()
         self.get_logger().info('BayesianSearchServer ready')

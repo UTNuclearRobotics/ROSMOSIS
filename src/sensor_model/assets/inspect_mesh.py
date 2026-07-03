@@ -2,7 +2,7 @@
 import open3d as o3d
 import numpy as np
 
-mesh_path = "/home/talal/projects/VISTA_ws/src/sensor_model/assets/seabed_50x50m.obj"
+mesh_path = "/home/talal/projects/rosmosis_ws/src/sensor_model/assets/seabed_1000x1000m.obj"
 mesh = o3d.io.read_triangle_mesh(mesh_path, enable_post_processing=True)
 
 vertices = np.asarray(mesh.vertices)

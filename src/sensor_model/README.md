@@ -15,6 +15,7 @@ The `environment` argument selects a config yaml from `sensor_model/config/` (om
 | `environment_basic` | Flat 200x200m seabed, two lobster pots at (0,10) and (0,20) |
 | `environment_seabed_basic` | Procedural rolling seabed with roughness, boxes at z=0 |
 | `environment_hill_valley` | Seabed with a valley at box_0 (0,10) and hill at box_1 (0,20) |
+| `env_1000x1000_cluster_seabed` | **ARL full-scale.** 1000×1000 m procedural rolling seabed (±2.5 m band), 10 lobster pots in 5 isolated clusters, 200 m separation. Pairs with `bayesian_search` `arena_size=(1000,1000)`. |
 
 ### Examples
 

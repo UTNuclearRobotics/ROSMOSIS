@@ -76,12 +76,13 @@ Starts: vehicle sim, FLS sensor, NBV server, helix service, Bayesian search serv
 ### With a specific environment
 
 ```bash
-ros2 launch demo_behaviors demo_mission_launch.py environment:=env_50x50_cluster_seabed
+ros2 launch demo_behaviors demo_mission_launch.py environment:=env_1000x1000_cluster_seabed
 ```
 
 | Environment | Description |
 |---|---|
-| `environment_basic` | Flat seabed, no objects (default) |
+| `env_1000x1000_cluster_seabed` | **ARL full-scale (default).** 1000×1000 m procedural rolling seabed, 10 lobster pots in 5 isolated clusters, 200 m separation |
+| `environment_basic` | Flat 200×200 m seabed, two pots |
 | `environment_seabed_basic` | Procedural rolling seabed |
 | `environment_50x50` | Flat 50×50m arena, four boxes at corners |
 | `env_50x50_centroidBox` | Flat 50×50m arena, single box offset from centroid |
@@ -92,18 +93,20 @@ ros2 launch demo_behaviors demo_mission_launch.py environment:=env_50x50_cluster
 
 ```bash
 ros2 launch demo_behaviors demo_mission_launch.py \
-    environment:=env_50x50_cluster_seabed \
+    environment:=env_1000x1000_cluster_seabed \
     drift_velocity:=0.1 \
-    constant_velocity:=0.8 \
+    constant_velocity:=2.0 \
     log_level:=debug
 ```
 
 | Parameter | Default | Description |
 |---|---|---|
-| `environment` | `environment_basic` | Environment yaml from `sensor_model/config/` |
-| `start_rviz` | `true` | Launch RViz |
+| `environment` | `env_1000x1000_cluster_seabed` | Environment yaml from `sensor_model/config/` |
+| `start_rviz` | `true` | Launch RViz (also gates the Bayesian belief-grid publish) |
 | `drift_velocity` | `0.25` | Idle drift speed between goals (m/s) |
-| `constant_velocity` | `0.5` | Navigation speed along Dubins paths (m/s) |
+| `constant_velocity` | `1.5` | Navigation speed along Dubins paths (m/s). ARL full-scale spec. |
+| `turn_radius_m` | `10.0` | Vehicle minimum turn radius (m); planner inflates ~20%. ARL full-scale spec. |
+| `max_pitch_deg` | `15.0` | Vehicle maximum pitch angle (deg) for planning and dynamics. |
 | `time_step` | `0.1` | Simulation dt (s) |
 | `log_level` | `info` | ROS log level for all nodes (debug/info/warn/error/fatal) |
 | `record` | `false` | Record an MCAP bag of the mission (`/face_hits`, `/detected_boxes`, `/tf`, `/tf_static`) into `data/bags/`. Requires `ros-humble-rosbag2-storage-mcap`. |
@@ -123,15 +126,17 @@ set and bag layout**, so the two are directly comparable.
 
 ```bash
 ros2 launch baseline_mission baseline_mission_launch.py \
-    environment:=env_50x50_cluster_seabed record:=true bag_prefix:=boustrophedon_cluster
+    environment:=env_1000x1000_cluster_seabed record:=true bag_prefix:=boustrophedon_cluster
 ```
 
 | Parameter | Default | Description |
 |---|---|---|
-| `environment` | `environment_basic` | Environment yaml from `sensor_model/config/` |
+| `environment` | `env_1000x1000_cluster_seabed` | Environment yaml from `sensor_model/config/` |
 | `start_rviz` | `true` | Launch RViz |
 | `drift_velocity` | `0.25` | Idle drift speed between goals (m/s) |
-| `constant_velocity` | `0.5` | Navigation speed along Dubins paths (m/s) |
+| `constant_velocity` | `1.5` | Navigation speed along Dubins paths (m/s). ARL full-scale spec. |
+| `turn_radius_m` | `10.0` | Vehicle minimum turn radius (m); planner inflates ~20%. ARL full-scale spec. |
+| `max_pitch_deg` | `15.0` | Vehicle maximum pitch angle (deg) for planning and dynamics. |
 | `time_step` | `0.1` | Simulation dt (s) |
 | `log_level` | `info` | ROS log level (debug/info/warn/error/fatal) |
 | `record` | `false` | Record an MCAP bag (`/face_hits`, `/detected_boxes`, `/tf`, `/tf_static`) into `data/bags/` |
@@ -156,7 +161,7 @@ tunable parameters.
 
 ### Behavior Trees
 
-**MainTree** — top-level mission loop (4 cycles):
+**MainTree** — top-level mission loop (10 cycles, one per pot):
 - `DetectAndSortQueue` runs continuously in parallel, accumulating detected targets sorted by distance
 - `ReactiveFallback` switches between two branches each tick:
   - **Inspection branch**: if queue is non-empty, run `NBVOnTarget` on the front target
@@ -215,27 +220,29 @@ lists those and the values that must stay consistent for a valid comparison.
 
 ### Environment selection
 
-- **`environment`** (launch argument, default `environment_basic`): selects the
-  scene YAML from `sensor_model/config/`. A single argument determines the
-  terrain mesh, the target boxes, and the box count. Examples are
-  `env_50x50_centroidBox` (one box on a flat plane) and `env_50x50_cluster_seabed`
-  (four boxes on a procedural seabed). This is the primary switch for changing
-  the test scenario.
+- **`environment`** (launch argument, default `env_1000x1000_cluster_seabed`):
+  selects the scene YAML from `sensor_model/config/`. A single argument determines
+  the terrain mesh, the target boxes, and the box count. The full-scale default is
+  `env_1000x1000_cluster_seabed` (10 pots in 5 clusters on a 1000×1000 m procedural
+  seabed); smaller examples are `env_50x50_centroidBox` (one box on a flat plane)
+  and `env_50x50_cluster_seabed` (four boxes on a procedural seabed). This is the
+  primary switch for changing the test scenario.
 
 ### Arena and world geometry
 
 - **Seabed depth / NED anchor**: the `map` to `ned` static transform has
-  z = 10 m (`src/vista_sim/launch/vista_sim_launch.py`, the
+  z = 50 m (`src/vista_sim/launch/vista_sim_launch.py`, the `--z` arg on the
   `static_transform_publisher` line). This sets the seafloor depth used to
   resolve vehicle clearance, and it caps how deep the vehicle can fly, so any
   clearance value must be smaller than this. Increase it to model a deeper water
   column.
-- **Arena size and origin**: 50 by 50 m with origin at (0, 0)
+- **Arena size and origin**: 1000 by 1000 m with origin at (0, 0)
   (`src/bayesian_search/bayesian_search/bayesian_search_server.py`, the
   `arena_size` and `grid_origin` members). The same extents are mirrored by the
   boustrophedon ROI and by the terrain mesh, and all three must agree.
-- **Terrain mesh**: `assets/flatPlane_50x50m.obj` for a flat seabed or
-  `assets/seabed_50x50m.obj` for procedural relief (env YAML `terrain.file_path`).
+- **Terrain mesh**: `assets/seabed_1000x1000m.obj` for the full-scale procedural
+  seabed (env YAML `terrain.file_path`); smaller `assets/flatPlane_50x50m.obj` /
+  `assets/seabed_50x50m.obj` remain for the 50×50 test scenes.
 
 ### Targets (lobster pots)
 
@@ -251,19 +258,20 @@ lists those and the values that must stay consistent for a valid comparison.
 These are shared by every mission because all of them drive through the same
 Dubins action server.
 
-- **`turn_radius_m`** = 5.0 m (launch argument): minimum turn radius. The path
+- **`turn_radius_m`** = 10.0 m (launch argument): minimum turn radius. The path
   planner uses 1.2 times this value to leave yaw-rate headroom for cross-track
   correction.
 - **`max_pitch_deg`** = 15 degrees (launch argument): the Dubins-airplane
   flight-path-angle bound used in both planning and dynamics.
-- **`constant_velocity`** = 0.5 m/s (launch argument): navigation speed along
+- **`constant_velocity`** = 1.5 m/s (launch argument): navigation speed along
   Dubins paths.
 - **`drift_velocity`** = 0.25 m/s (launch argument): idle drift speed applied
   between goals.
 - **`time_step`** = 0.1 s (launch argument): simulation integration timestep.
-- **Spawn pose** = `Eta(-5, 0, 0, yaw=0)`, that is north = -5, east = 0, facing
+- **Spawn pose** = `Eta(-10, 0, 0, yaw=0)`, that is north = -10, east = 0, facing
   north (`src/vista_sim/vista_sim/dubins_pose_to_pose_action_server.py`,
-  hardcoded). Shared by all missions.
+  hardcoded). Shared by all missions. Set south of the boustrophedon's first lane
+  (north = -row_extension ≈ -7.58 m at clearance=15) for a clean running start.
 - **Goal tolerance** = within 3.0 m position and 0.3 rad yaw
   (`dubins_pose_to_pose_action_server.py`, hardcoded). Controls when a waypoint
   counts as reached.
@@ -294,28 +302,29 @@ files (see Cross-file consistency).
 ### Mission timing and structure (NBV mission)
 
 - **`Repeat num_cycles`** (`src/demo_behaviors/behavior_trees/main_tree.xml`,
-  currently 4): the number of targets the mission inspects before it ends. Set
+  currently 10): the number of targets the mission inspects before it ends. Set
   this equal to the scene `box_count`.
-- **`isWithinTimeLimit hours`** (`main_tree.xml`, currently 2): the mission time
+- **`isWithinTimeLimit hours`** (`main_tree.xml`, currently 24): the mission time
   budget. It guards the search branch, so it acts as a backstop that ends the
   mission if the targets are not all found. For short test runs, lower it.
-- **`DubinsClient timeout_sec`**: 600 s in the NBV inspection subtree
-  (`nbv_on_target.xml`) and 300 s in the search subtree (`bayesian_search.xml`).
-  This is the per-maneuver timeout. For short time-boxed missions, consider
-  lowering it so a single stalled maneuver cannot consume the whole budget.
+- **`DubinsClient timeout_sec`**: 1200 s in the NBV inspection subtree
+  (`nbv_on_target.xml`) and 1500 s in the search subtree (`bayesian_search.xml`).
+  This is the per-maneuver timeout, sized for the long transits of the 1000×1000 m
+  arena. For short time-boxed missions, consider lowering it so a single stalled
+  maneuver cannot consume the whole budget.
 
 ### Boustrophedon baseline (non-adaptive coverage)
 
 Configured by the members at the top of
 `src/baseline_mission/baseline_mission/boustrophedon_run.py`.
 
-- **`clearance`** = 5.0 m above the seabed. The survey depth is derived from this
-  and the resolved seafloor depth.
+- **`clearance`** = 15.0 m above the seabed. The survey depth is derived from this
+  and the resolved seafloor depth (50 − 15 = 35 m).
 - **`fov_x_deg` / `fov_y_deg`** = 150 / 25. These drive the swath and lane
   spacing and must match the sensor model.
 - **`mount_angle_deg`** = 20. Used for the along-track running start, and must
   match the URDF.
-- **ROI bounds** (`roi_north_min/max`, `roi_east_min/max`) = 0 to 50. The survey
+- **ROI bounds** (`roi_north_min/max`, `roi_east_min/max`) = 0 to 1000. The survey
   rectangle, which must match the arena.
 
 ### Bayesian search (non-adaptive search)
@@ -323,12 +332,14 @@ Configured by the members at the top of
 Configured by the members of
 `src/bayesian_search/bayesian_search/bayesian_search_server.py`.
 
-- **`grid_resolution`** = 1.0 m per cell.
-- **`arena_size`** = (50, 50), **`grid_origin`** = (0, 0). Must match the arena.
-- **`prior_sigma`** = 8.0 m: the width of the prior probability bump. The prior
-  centroid defaults to the arena center.
-- **`search_depth`** = 5.0 m NED, from which the search clearance is derived
-  (currently 5 m, matching the baseline).
+- **`grid_resolution`** = 1.0 m per cell (1M cells at 1000×1000; ~31 ms per query).
+- **`arena_size`** = (1000, 1000), **`grid_origin`** = (0, 0). Must match the arena.
+- **prior sigma** = `arena_size[0] / 5` (200 m at full scale): the width of the
+  prior probability bump, set inline at the `gaussian_bump` call in `_build_grid`
+  (no longer a stored member). The prior centroid defaults to the arena center;
+  the 0.01 floor + swept-cell zeroing guarantee exhaustive coverage regardless.
+- **`search_depth`** = 35.0 m NED, from which the search clearance is derived
+  (15 m, matching the baseline).
 - **`mount_angle`** = 20 degrees. Must match the URDF.
 
 ### Recording and output (both missions)
@@ -352,9 +363,9 @@ following aligned.
 - **Field of view (150 by 25 degrees)** is hardcoded in the boustrophedon node
   for its swath math, while the NBV and search read it from `camera_info`. If the
   sensor FOV changes, update the boustrophedon node to match.
-- **Arena size (50 by 50) and origin (0, 0)** appear in the boustrophedon ROI,
+- **Arena size (1000 by 1000) and origin (0, 0)** appear in the boustrophedon ROI,
   the search arena, and the terrain mesh, and all must agree.
-- **Clearance** is currently 5 m for both the baseline and the search; keep them
+- **Clearance** is currently 15 m for both the baseline and the search; keep them
   equal for a fair altitude comparison.
-- **Seabed depth (10 m)** caps the clearance, so any clearance must be smaller
+- **Seabed depth (50 m)** caps the clearance, so any clearance must be smaller
   than it.

@@ -42,9 +42,9 @@ class VehiclePoseActionServer(Node):
         # Parameters
         self.declare_parameter("frame_id", "ned")
         self.declare_parameter("time_step", 0.1)
-        self.declare_parameter("constant_velocity", 0.5)
+        self.declare_parameter("constant_velocity", 1.5)
         self.declare_parameter("drift_velocity", 0.25)
-        self.declare_parameter("turn_radius_m", 5.0)
+        self.declare_parameter("turn_radius_m", 10.0)
         self.declare_parameter("max_pitch_deg", 15.0)
         self.frame_id = self.get_parameter("frame_id").value
         self.dt = self.get_parameter("time_step").value
@@ -63,7 +63,10 @@ class VehiclePoseActionServer(Node):
         # that produced the flicker).
         
         # initializing eta also determines its initial position relative to ned.
-        self._eta = Eta(-5.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        # North=-10: south of the boustrophedon's first lane (north = -row_extension
+        # = -7.58 m at clearance=15), so the vehicle gets a clean straight northward
+        # running start instead of a wasteful U-turn loop at turn_radius=10.
+        self._eta = Eta(-10.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         self._nu = Nu(self._drift_velocity, 0.0, 0.0, 0.0, 0.0, 0.0)
         self._goal_active = False
 

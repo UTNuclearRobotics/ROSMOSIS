@@ -11,10 +11,11 @@ Frame convention (matches dubins_pose_to_pose_action_server.py):
     NED. position.x = north, position.y = east, position.z = depth (down +).
     yaw: 0 = heading north (+x), pi = heading south (-x).
 
-The vehicle spawns at Eta(-5, 0, 0, yaw=0): north=-5, east=0, facing north.
-That sits just south of the ROI on the first lane (east=0), so the first row is
-a clean northward sweep with a built-in running start. Both this baseline and
-the NBV mission share that one hardcoded spawn, so no spawn parameter is needed.
+The vehicle spawns at Eta(-10, 0, 0, yaw=0): north=-10, east=0, facing north.
+That sits just south of the first lane (which starts at north=-row_extension,
+≈-7.58 m at clearance=15), so the first row is a clean northward sweep with a
+built-in running start instead of a U-turn loop. Both this baseline and the NBV
+mission share that one hardcoded spawn, so no spawn parameter is needed.
 
 Geometry
 --------
@@ -62,15 +63,15 @@ class BoustrophedonRun(Node):
         self.mount_angle_deg = 20.0
 
         # Sensor clearance above the seafloor, metres. Drives the swath geometry.
-        self.clearance = 5.0
+        self.clearance = 15.0
 
         # ROI rectangle to cover, NED metres. Rows run along north; lanes step
-        # along east. Matches bayesian_search's 50x50 arena (origin 0,0) so the
-        # baseline and the search cover an identical region.
+        # along east. Matches bayesian_search's 1000x1000 arena (origin 0,0) so
+        # the baseline and the search cover an identical region.
         self.roi_north_min = 0.0
-        self.roi_north_max = 50.0
+        self.roi_north_max = 1000.0
         self.roi_east_min = 0.0
-        self.roi_east_max = 50.0
+        self.roi_east_max = 1000.0
 
         # Pose frame; must match the action server's frame_id.
         self.frame_id = "ned"

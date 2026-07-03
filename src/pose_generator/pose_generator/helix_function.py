@@ -137,13 +137,13 @@ def generate_helix(
 if __name__ == "__main__":
     # Test with params from nbv_on_target.xml
     pose_array = generate_helix(
-        r_min=5.0,
-        radius_multiplier=5.0,
+        r_min=10.0,
+        radius_multiplier=4.0,
         num_shells=4,
-        helix_height=10.0,
-        clearance=5.0,
+        helix_height=15.0,
+        clearance=15.0,
         psi_max_deg=15.0,
-        delta_theta_deg=30.0,
+        delta_theta_deg=24.0,
         mount_angle_deg=20.0
     )
 

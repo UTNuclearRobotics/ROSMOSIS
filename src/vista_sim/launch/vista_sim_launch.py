@@ -56,7 +56,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'constant_velocity',
-            default_value='0.5',
+            default_value='1.5',
             description='Navigation velocity for Dubins path following (m/s)'
         ),
         DeclareLaunchArgument(
@@ -66,7 +66,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'turn_radius_m',
-            default_value='5.0',
+            default_value='10.0',
             description='Vehicle minimum turn radius (m); the planner inflates this 20 percent so paths stay feasible'
         ),
         DeclareLaunchArgument(
@@ -84,7 +84,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='map_to_ned_static',
-            arguments=['--x', '0', '--y', '0', '--z', '10', '--yaw', '1.57079632679', '--pitch', '0', '--roll', '3.14159265359', '--frame-id', 'map', '--child-frame-id', 'ned'],
+            arguments=['--x', '0', '--y', '0', '--z', '50', '--yaw', '1.57079632679', '--pitch', '0', '--roll', '3.14159265359', '--frame-id', 'map', '--child-frame-id', 'ned'],
         ),
 
         # Robot State Publisher 
