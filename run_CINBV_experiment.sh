@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 #
-# CI-NBV alpha sweep on env_50x50_cluster_seabed: one NBV mission per alpha in
+# CI-NBV alpha sweep on env_1000x1000_cluster_seabed: one NBV mission per alpha in
 # {0, 0.25, 0.5, 0.75, 1.0}, recording a bag named
-# nbv_cone_alpha<val>_50x50_cluster_seabed_<timestamp>.
+# nbv_<sampler>_alpha<val>_fullscale_<timestamp>.
+#
+# SAMPLER (=cone|helix) is REQUIRED -- it labels the bag. The actual viewpoint
+# sampler is baked into the image's BT (nbv_on_target.xml), so SAMPLER must match
+# the IMAGE you pass. Example:
+#   IMAGE=rosmosis:cone  SAMPLER=cone  ./run_CINBV_experiment.sh
+#   IMAGE=rosmosis:helix SAMPLER=helix ./run_CINBV_experiment.sh
 #
 # Runs in BATCHES of MAX_PARALLEL (default 3), one mission per GPU, with a
 # startup STAGGER between launches. This is the "1-per-GPU" mode: no two missions
@@ -18,7 +24,8 @@ set -euo pipefail
 
 # ---- config ----
 IMAGE="${IMAGE:?set IMAGE to your built image tag, e.g. IMAGE=rosmosis:test0}"
-ENVIRONMENT="${ENVIRONMENT:-env_50x50_cluster_seabed}"
+SAMPLER="${SAMPLER:?set SAMPLER=cone or SAMPLER=helix (bag label; MUST match the sampler baked into IMAGE)}"
+ENVIRONMENT="${ENVIRONMENT:-env_1000x1000_cluster_seabed}"
 DATA_DIR="${DATA_DIR:-$HOME/ROSMOSIS/data}"
 NUM_GPUS=3                           # A6000 count
 MAX_PARALLEL="${MAX_PARALLEL:-3}"    # concurrent missions; must be <= NUM_GPUS (1 per GPU)
@@ -31,13 +38,14 @@ OMP_THREADS="${OMP_THREADS:-10}"     # OpenMP pool for Open3D TSDF integrate/mes
 MEM_LIMIT="${MEM_LIMIT:-16g}"        # RAM ceiling; mission uses ~9g, this is just a runaway backstop
 
 # ---- live progress ----
-M_TARGETS="${M_TARGETS:-4}"          # targets in the scene (box_count); denominator for the mapped bar
+M_TARGETS="${M_TARGETS:-10}"         # targets in the scene (box_count); denominator for the mapped bar
 PROGRESS_REFRESH="${PROGRESS_REFRESH:-30}"  # seconds between progress prints while a batch runs
 
 ALPHAS=(0 0.25 0.5 0.75 1.0)
 
 # ---- preflight ----
 command -v docker >/dev/null || { echo "docker not found" >&2; exit 1; }
+[[ "$SAMPLER" == "cone" || "$SAMPLER" == "helix" ]] || { echo "SAMPLER must be 'cone' or 'helix', got '$SAMPLER'" >&2; exit 1; }
 (( MAX_PARALLEL <= NUM_GPUS )) || { echo "MAX_PARALLEL ($MAX_PARALLEL) must be <= NUM_GPUS ($NUM_GPUS) to keep one mission per GPU" >&2; exit 1; }
 (( MAX_PARALLEL * CORES_PER <= 120 )) || { echo "MAX_PARALLEL*CORES_PER ($((MAX_PARALLEL*CORES_PER))) exceeds 120; leave >=8 cores for the host" >&2; exit 1; }
 mkdir -p "$DATA_DIR"
@@ -46,6 +54,7 @@ mkdir -p "$LOG_DIR"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 
 echo "Image:        $IMAGE"
+echo "Sampler:      $SAMPLER   (bag label -- must match the BT baked into the image)"
 echo "Environment:  $ENVIRONMENT"
 echo "Data dir:     $DATA_DIR"
 echo "GPUs:         $NUM_GPUS   Max parallel: $MAX_PARALLEL   Stagger: ${STAGGER}s"
@@ -61,7 +70,7 @@ BATCH_PIDS=(); BATCH_LOGS=()
 # index within the batch) so concurrent missions never contend for cores.
 launch_run() {
     local alpha="$1" gpu="$2" domain="$3"
-    local prefix="nbv_cone_alpha${alpha}_50x50_cluster_seabed"
+    local prefix="nbv_${SAMPLER}_alpha${alpha}_fullscale"
     local logf="${LOG_DIR}/${prefix}_${STAMP}.log"
     local cpu_lo=$(( gpu * CORES_PER ))
     local cpu_hi=$(( cpu_lo + CORES_PER - 1 ))

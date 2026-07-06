@@ -90,8 +90,17 @@ changes are picked up by the in-build re-clone, not by this outer clone.
 
 ## 3. Building the image
 
+The convenience wrapper `build_image.sh` does the agent-load + `CACHEBUST` build for
+you — just give it a tag (use the sampler name so it pairs with `SAMPLER`):
+
 ```bash
 cd ~/ROSMOSIS
+TAG=cone ./build_image.sh        # -> rosmosis:cone   (agent-load + fresh re-clone)
+```
+
+Or the raw command it runs:
+
+```bash
 eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519     # if not already loaded
 docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:<tag> .
 ```
@@ -111,6 +120,27 @@ attribute 'float'"*. The Dockerfile writes `/etc/pip-constraints.txt` with
 to **every** pip install transitively. (Do not relax this to `numpy<2` — 1.24–1.26
 still break the import.)
 
+### Cone vs helix: one image per sampler
+
+The viewpoint sampler is **baked into the behavior tree** (`nbv_on_target.xml`); there
+is no launch arg for it. So each sampler is a **separate image**:
+
+1. In `src/demo_behaviors/behavior_trees/nbv_on_target.xml`, activate the sampler you
+   want (comment out the other block), **commit and push**.
+2. Rebuild with a **sampler-matching tag**, e.g. `rosmosis:cone` or `rosmosis:helix`.
+
+```bash
+# after pushing the BT with the cone block active
+TAG=cone ./build_image.sh
+# ...switch the BT to helix, push, then:
+TAG=helix ./build_image.sh
+```
+
+> The sweep script's `SAMPLER=cone|helix` is a **bag label only** — it does not change
+> the sampler. You must pair it with the matching image (`IMAGE=rosmosis:cone
+> SAMPLER=cone`). Mismatching them runs the wrong sampler under the wrong name and
+> silently corrupts the comparison.
+
 ---
 
 ## 4. Running an experiment
@@ -123,8 +153,8 @@ docker run --rm --gpus all \
   rosmosis:<tag> \
   ros2 launch demo_behaviors demo_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
-      environment:=env_50x50_cluster_seabed \
-      alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25
+      environment:=env_1000x1000_cluster_seabed \
+      alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25_fullscale
 ```
 
 ### Boustrophedon baseline
@@ -138,7 +168,7 @@ docker run --rm --gpus all \
   rosmosis:<tag> \
   ros2 launch baseline_mission baseline_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
-      environment:=env_50x50_cluster_seabed bag_prefix:=boustrophedon_cluster
+      environment:=env_1000x1000_cluster_seabed bag_prefix:=boustrophedon_fullscale
 ```
 
 ### `docker run` flags that matter here
@@ -238,27 +268,29 @@ Host-side scripts (`git pull` + `chmod +x`, **no rebuild**):
 ```bash
 chmod +x run_CINBV_experiment.sh run_boustrophedon_experiment.sh
 
-# 5-alpha sweep, 3-at-a-time
-IMAGE=rosmosis:<tag> M_TARGETS=10 ENVIRONMENT=env_50x50_cluster_seabed \
-  ./run_CINBV_experiment.sh
+# 5-alpha cone sweep, 3-at-a-time (SAMPLER is required; pair with the cone image)
+IMAGE=rosmosis:cone SAMPLER=cone ./run_CINBV_experiment.sh
+
+# 5-alpha helix sweep (pair SAMPLER=helix with the helix image)
+IMAGE=rosmosis:helix SAMPLER=helix ./run_CINBV_experiment.sh
 
 # boustrophedon baseline (CPU-only)
-IMAGE=rosmosis:<tag> ENVIRONMENT=env_50x50_cluster_seabed \
-  ./run_boustrophedon_experiment.sh
+IMAGE=rosmosis:cone ./run_boustrophedon_experiment.sh
 ```
 
 Env-overridable knobs:
 
 | Var | Default | Meaning |
 |---|---|---|
-| `IMAGE` | (required) | built image tag |
+| `IMAGE` | (required) | built image tag — must be the image whose BT matches `SAMPLER` |
+| `SAMPLER` | (required, `cone`\|`helix`) | **CINBV only.** Bag label; must match the sampler baked into `IMAGE` |
 | `MAX_PARALLEL` | 3 | concurrent missions; must be ≤ 3 (1 per GPU) |
 | `CORES_PER` | 32 | dedicated cores per mission (`--cpuset-cpus`) |
 | `OMP_THREADS` | 10 | OpenMP pool for the Open3D TSDF work |
 | `MEM_LIMIT` | 16g | RAM ceiling (backstop; ~9g used) |
-| `M_TARGETS` | 4 | scene target count, for the progress bar |
+| `M_TARGETS` | 10 | scene target count, for the progress bar |
 | `STAGGER` | 15 | seconds between launches in a batch |
-| `ENVIRONMENT` | env_50x50_cluster_seabed | scene yaml |
+| `ENVIRONMENT` | env_1000x1000_cluster_seabed | scene yaml |
 
 **Batch ≤3, not all-5:** only 3 GPUs (so no card is shared), and the host must keep
 cores, so running 5 at once oversubscribes and starves the wall-clock sim, which
@@ -273,21 +305,23 @@ corrupts timing *and* reconstructions.
 git clone git@github.com:UTNuclearRobotics/ROSMOSIS.git ~/ROSMOSIS
 cd ~/ROSMOSIS && git checkout experiment-docker
 
-# --- build (re-run after every push you want picked up) ---
-eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
-docker build --ssh default --build-arg CACHEBUST=$(date +%s) -t rosmosis:<tag> .
+# --- build one image per sampler (re-run after every push you want picked up) ---
+TAG=cone  ./build_image.sh       # -> rosmosis:cone   (edit BT to cone, push, then build)
+TAG=helix ./build_image.sh       # -> rosmosis:helix  (edit BT to helix, push, then build)
 
 # --- single run (headless, persisted) ---
 docker run --rm --gpus '"device=0"' \
   -v "$HOME/ROSMOSIS/data:/workspace/data" \
-  rosmosis:<tag> \
+  rosmosis:cone \
   ros2 launch demo_behaviors demo_mission_launch.py \
       start_rviz:=false debug_gui:=false record:=true \
-      environment:=env_50x50_cluster_seabed \
-      alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25
+      environment:=env_1000x1000_cluster_seabed \
+      alpha:=0.25 bag_prefix:=nbv_cone_alpha0.25_fullscale
 
-# --- alpha sweep (batched 1-per-GPU, live progress) ---
-IMAGE=rosmosis:<tag> M_TARGETS=10 ./run_CINBV_experiment.sh
+# --- alpha sweep (batched 1-per-GPU, live progress); pair SAMPLER with the image ---
+IMAGE=rosmosis:cone  SAMPLER=cone  ./run_CINBV_experiment.sh
+IMAGE=rosmosis:helix SAMPLER=helix ./run_CINBV_experiment.sh
+IMAGE=rosmosis:cone  ./run_boustrophedon_experiment.sh
 
 # --- pull ALL results down (from a LOCAL terminal, merges into ./data) ---
 rsync -avzP <user>@<server>:~/ROSMOSIS/data/ ./data/

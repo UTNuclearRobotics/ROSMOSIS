@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Boustrophedon baseline on env_50x50_cluster_seabed: a single CPU-only run
+# Boustrophedon baseline on env_1000x1000_cluster_seabed: a single CPU-only run
 # (no --gpus -- the lawnmower pattern has no NBV/TSDF CUDA), recording a bag
-# named boustrophedon_50x50_cluster_seabed_<timestamp>.
+# named boustrophedon_fullscale_<timestamp>.
 #
 # Mirrors run_CINBV_experiment.sh (same env, data dir, naming) so it can run
 # alongside that sweep if needed: it uses ROS_DOMAIN_ID 26, one past the sweep's
@@ -14,7 +14,7 @@ set -euo pipefail
 
 # ---- config ----
 IMAGE="${IMAGE:?set IMAGE to your built image tag, e.g. IMAGE=rosmosis:test0}"
-ENVIRONMENT="${ENVIRONMENT:-env_50x50_cluster_seabed}"
+ENVIRONMENT="${ENVIRONMENT:-env_1000x1000_cluster_seabed}"
 DATA_DIR="${DATA_DIR:-$HOME/ROSMOSIS/data}"
 DOMAIN_ID="${DOMAIN_ID:-26}"         # one past the NBV sweep's 21-25
 
@@ -25,7 +25,7 @@ LOG_DIR="$DATA_DIR/run_logs"
 mkdir -p "$LOG_DIR"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 
-PREFIX="boustrophedon_50x50_cluster_seabed"
+PREFIX="boustrophedon_fullscale"
 LOGF="${LOG_DIR}/${PREFIX}_${STAMP}.log"
 
 echo "Image:        $IMAGE"
