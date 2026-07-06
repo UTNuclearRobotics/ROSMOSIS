@@ -11,11 +11,12 @@ Frame convention (matches dubins_pose_to_pose_action_server.py):
     NED. position.x = north, position.y = east, position.z = depth (down +).
     yaw: 0 = heading north (+x), pi = heading south (-x).
 
-The vehicle spawns at Eta(-10, 0, 0, yaw=0): north=-10, east=0, facing north.
-That sits just south of the first lane (which starts at north=-row_extension,
-≈-7.58 m at clearance=15), so the first row is a clean northward sweep with a
-built-in running start instead of a U-turn loop. Both this baseline and the NBV
-mission share that one hardcoded spawn, so no spawn parameter is needed.
+The vehicle spawns at Eta(-30, 0, 0, yaw=0): north=-30, east=0, facing north.
+That sits south of the first lane (which starts at north=-row_extension,
+≈-7.58 m at clearance=15), with ~22 m of run-up so the vehicle reaches cruise
+speed and settles before the first sweep lane — a clean northward sweep instead
+of a U-turn loop. Both this baseline and the NBV mission share that one hardcoded
+spawn, so no spawn parameter is needed.
 
 Geometry
 --------

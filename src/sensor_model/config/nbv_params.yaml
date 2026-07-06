@@ -22,12 +22,12 @@ next_best_view_server:
     task_frame: map
     tsdf:
       angular_motion_threshold: 0.0
-      fine_voxel_scale: 0.5
+      fine_voxel_scale: 1.0
       fine_voxel_trunc: 0.0
       padding: 0.5
       position_motion_threshold: 0.0
-      truncation_distance: 0.4
-      voxel_size: 0.1
+      truncation_distance: 0.6
+      voxel_size: 0.15
 
 #TODO: ensure this yaml file is accessed by launch files
 # For now, we can load it at run time for basic tests.

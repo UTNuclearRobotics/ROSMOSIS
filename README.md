@@ -268,10 +268,11 @@ Dubins action server.
 - **`drift_velocity`** = 0.25 m/s (launch argument): idle drift speed applied
   between goals.
 - **`time_step`** = 0.1 s (launch argument): simulation integration timestep.
-- **Spawn pose** = `Eta(-10, 0, 0, yaw=0)`, that is north = -10, east = 0, facing
+- **Spawn pose** = `Eta(-30, 0, 0, yaw=0)`, that is north = -30, east = 0, facing
   north (`src/vista_sim/vista_sim/dubins_pose_to_pose_action_server.py`,
   hardcoded). Shared by all missions. Set south of the boustrophedon's first lane
-  (north = -row_extension ≈ -7.58 m at clearance=15) for a clean running start.
+  (north = -row_extension ≈ -7.58 m at clearance=15) with ~22 m of run-up so the
+  vehicle reaches cruise speed and settles before the first sweep lane.
 - **Goal tolerance** = within 3.0 m position and 0.3 rad yaw
   (`dubins_pose_to_pose_action_server.py`, hardcoded). Controls when a waypoint
   counts as reached.

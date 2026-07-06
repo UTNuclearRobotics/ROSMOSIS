@@ -2,7 +2,7 @@
     <BehaviorTree ID="NBVOnTarget">
         <Sequence>
             <!-- Build ROI extents Vector3 from hardcoded dimensions -->
-            <SetROIExtents x_length="2.0" y_length="2.0" z_length="1.0" roi_extents="{roi_extents}"/>
+            <SetROIExtents x_length="3.0" y_length="3.0" z_length="3.0" roi_extents="{roi_extents}"/>
 
             <!-- Wrap PoseStamped to SharedPtr for PublishTransform -->
             <MakeShared value_in="{current_pose}" shared_ptr="{current_pose_ptr}"/>
@@ -50,7 +50,7 @@
             <!-- NBV loop: repeat while not saturated -->
             <RepeatWhile reactive = "false">
                 <Inverter>
-                    <CheckScoreSaturation threshold="0.10" patience="2" fractional_scores="{scores}"/>
+                    <CheckScoreSaturation threshold="0.05" patience="3" fractional_scores="{scores}"/>
                 </Inverter>
                 <Sequence>
                     <!-- Cost each remaining candidate via true Dubins path length (NED, server-side) -->
@@ -88,8 +88,12 @@
                 </Sequence>
             </RepeatWhile>
 
-            <!-- Finalize reconstruction for this target, returning the Marching Cubes mesh -->
-            <ConcludePolicy return_pointcloud="false" return_mesh="true" scene_mesh="{object_mesh}"/>
+            <!-- Finalize reconstruction for this target, returning BOTH the Marching
+                 Cubes mesh and the ROI-clipped surface point cloud. The point cloud has
+                 no MC triangulation, so it cannot fragment on sparse returns -- useful as
+                 a fallback view when the mesh comes out patchy at long standoff. -->
+            <ConcludePolicy return_pointcloud="true" return_mesh="true"
+                            scene_mesh="{object_mesh}" roi_cloud="{object_cloud}"/>
 
             <!-- Save the reconstructed mesh to disk under this run's reconstruction_dir
                  (seeded onto the blackboard by run_bt from the launch parameter, so it
@@ -97,6 +101,12 @@
                  the directory and picks the format from the file extension (.ply/.stl/.obj). -->
             <Script code="mesh_path := reconstruction_dir .. '/target_' .. current_ID .. '.ply'"/>
             <SaveModelToFile file_path="{mesh_path}" mesh="{object_mesh}" overwrite="true"/>
+
+            <!-- Also save the ROI surface point cloud (.pcd), same folder/name as the mesh.
+                 No Marching Cubes, so it never fragments; view with `pcl_viewer target_N.pcd`
+                 (needs pcl-tools). -->
+            <Script code="cloud_path := reconstruction_dir .. '/target_' .. current_ID .. '.pcd'"/>
+            <SaveModelToFile file_path="{cloud_path}" points="{object_cloud}" overwrite="true"/>
 
             <!-- Signal DetectAndSortQueue to retire this target -->
             <MarkTargetComplete current_id_read="{current_ID}" completed_id_write="{completed_id}"/>

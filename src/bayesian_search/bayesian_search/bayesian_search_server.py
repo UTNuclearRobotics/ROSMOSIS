@@ -400,7 +400,7 @@ class BayesianSearchServer(Node):
         msg.info.height = rows
         msg.info.origin.position.x = float(self.grid_origin[0])
         msg.info.origin.position.y = float(self.grid_origin[1])
-        msg.info.origin.position.z = 1.0   # float above the coplanar terrain so it's visible
+        msg.info.origin.position.z = 5.0   # float clearly above the undulating seabed (peak ~+2.1m) so the flat grid isn't buried; viz-only
         msg.info.origin.orientation.w = 1.0
 
         # normalize to [0, 100]; data is row-major (i*cols + j), matching the grid

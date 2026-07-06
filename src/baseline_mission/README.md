@@ -54,7 +54,7 @@ The mount angle does **not** affect the swath/lane spacing (the FOV does); it on
 
 ### Frame convention
 
-Poses are in **NED** (matches the Dubins action server): `position.x = north`, `position.y = east`, `position.z = depth` (down +); `yaw = 0` heads north, `yaw = pi` heads south. The vehicle spawns at `Eta(-10, 0, 0, yaw=0)` (shared with the NBV mission), just south of the first lane (which starts at north ≈ -7.58 m at clearance=15) for a clean northward running start.
+Poses are in **NED** (matches the Dubins action server): `position.x = north`, `position.y = east`, `position.z = depth` (down +); `yaw = 0` heads north, `yaw = pi` heads south. The vehicle spawns at `Eta(-30, 0, 0, yaw=0)` (shared with the NBV mission), south of the first lane (which starts at north ≈ -7.58 m at clearance=15) with ~22 m of run-up so it reaches cruise speed and settles before the first sweep lane.
 
 ## Parameters
 
