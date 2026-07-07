@@ -294,17 +294,16 @@ ARENA_COMPARE = 1000.0   # full-scale scene size for per-run heatmaps
 PER_RUN_PLOTS = True     # also emit each run's standalone CIR + heatmap plots
 CIR_LEVELS = [0.9]       # time-to-CIR thresholds (1.0 is asymptotic -> use Final CIR)
 
-# REPLACE ME: replace <sampler> with cone or helix, and drop the REPLACE_ME_
-# prefix, once the full-scale runs finish. Real names come from the experiment
-# scripts: boustrophedon_fullscale, nbv_<sampler>_alpha<val>_fullscale.
+# Full-scale CONE sweep + boustrophedon baseline. For the helix sweep, swap
+# "cone" -> "helix" in the labels and prefixes (bags: nbv_helix_alpha<val>_fullscale).
 RUNS = [
     # (label, prefix)
-    ("Boustrophedon",        "REPLACE_ME_boustrophedon_fullscale"),
-    ("NBV <sampler> α=0.0",  "REPLACE_ME_nbv_<sampler>_alpha0_fullscale"),
-    ("NBV <sampler> α=0.25", "REPLACE_ME_nbv_<sampler>_alpha0.25_fullscale"),
-    ("NBV <sampler> α=0.5",  "REPLACE_ME_nbv_<sampler>_alpha0.5_fullscale"),
-    ("NBV <sampler> α=0.75", "REPLACE_ME_nbv_<sampler>_alpha0.75_fullscale"),
-    ("NBV <sampler> α=1.0",  "REPLACE_ME_nbv_<sampler>_alpha1.0_fullscale"),
+    ("Boustrophedon",   "boustrophedon_fullscale"),
+    ("NBV cone α=0.0",  "nbv_cone_alpha0_fullscale"),
+    ("NBV cone α=0.25", "nbv_cone_alpha0.25_fullscale"),
+    ("NBV cone α=0.5",  "nbv_cone_alpha0.5_fullscale"),
+    ("NBV cone α=0.75", "nbv_cone_alpha0.75_fullscale"),
+    ("NBV cone α=1.0",  "nbv_cone_alpha1.0_fullscale"),
 ]
 
 # %% Compute every run once; collect CIR_total curves + summary stats.
@@ -318,12 +317,14 @@ for label, prefix in RUNS:
     cir_r, df_t_r = compute_cir_timeseries(bdir, M_COMPARE)
     ct = cir_r["CIR_total"]
     overlay.append((label, ct))
-    row = {"Run": label, "Final CIR_total": round(float(ct.iloc[-1]), 4)}
-    for lvl in CIR_LEVELS:                                   # time-to-threshold column(s)
-        row[f"t @ CIR>={lvl} (s)"] = round(time_to_threshold(ct, lvl), 1)
-    row["End time (s)"] = round(float(ct.index[-1]), 1)      # mission completion time
-    row["bag"] = bdir.name
-    rows.append(row)
+    cmax = float(ct.max())                       # highest CIR (= final; CIR is monotonic)
+    rows.append({
+        "Run": label,
+        "Highest CIR_total": round(cmax, 4),
+        "t @ highest CIR (s)": round(time_to_threshold(ct, cmax), 1),  # when plateau reached
+        "End time (s)": round(float(ct.index[-1]), 1),                 # mission end / total duration
+        "bag": bdir.name,
+    })
     if PER_RUN_PLOTS:
         plot_cir(cir_r, bdir.name)
         xr, yr = extract_xy_map(bdir)
