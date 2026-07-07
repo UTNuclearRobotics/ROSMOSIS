@@ -13,11 +13,9 @@
             <!-- Initialize NBV solver for this target -->
             <ActivatePolicy roi_center="{current_pose}" roi_extents="{roi_extents}"/>
 
-            <!-- Helix-manifold sampler (alternative, currently disabled). To run
-                 the helix instead of the cone: comment out the SampleViewPosesCone
-                 block below and uncomment this one. Both write to {poses}, so
-                 nothing downstream changes. -->
-            <!--
+            <!-- Helix-manifold sampler (ACTIVE). To run the cone instead: comment
+                 out this block and uncomment the SampleViewPosesCone block below.
+                 Both write to {poses}, so nothing downstream changes. -->
             <SampleViewPosesHelix
                 clearance_height="15"
                 helix_height="15"
@@ -29,11 +27,11 @@
                 mount_angle_deg="20"
                 view_poses="{poses}"
             />
-            -->
 
-            <!-- Cone-manifold sampler (ACTIVE). r = z/tan(mount_angle); rings span
-                 [clearance, cone_height]; pitch is handled by the path planner,
-                 not the sampler. -->
+            <!-- Cone-manifold sampler (currently disabled). r = z/tan(mount_angle);
+                 rings span [clearance, cone_height]; pitch is handled by the path
+                 planner, not the sampler. -->
+            <!--
             <SampleViewPosesCone
                 num_rings="3"
                 clearance="15"
@@ -42,6 +40,7 @@
                 mount_angle_deg="20"
                 view_poses="{poses}"
             />
+            -->
 
 
             <!-- Initial scoring of all candidates (do-while seed) -->

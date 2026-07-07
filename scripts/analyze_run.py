@@ -320,7 +320,7 @@ for label, prefix in RUNS:
     cmax = float(ct.max())                       # highest CIR (= final; CIR is monotonic)
     rows.append({
         "Run": label,
-        "Highest CIR_total": round(cmax, 4),
+        "Highest CIR_total": f"{cmax:.4f}",           # fixed 4 dp (keeps trailing zeros)
         "t @ highest CIR (s)": round(time_to_threshold(ct, cmax), 1),  # when plateau reached
         "End time (s)": round(float(ct.index[-1]), 1),                 # mission end / total duration
         "bag": bdir.name,
