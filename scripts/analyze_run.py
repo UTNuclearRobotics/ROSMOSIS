@@ -292,7 +292,7 @@ def plot_heatmap(x, y, bag_name, arena=1000.0, gridsize=50, save=True, margin_fr
 M_COMPARE = 10           # full-scale scene box_count
 ARENA_COMPARE = 1000.0   # full-scale scene size for per-run heatmaps
 PER_RUN_PLOTS = True     # also emit each run's standalone CIR + heatmap plots
-CIR_LEVELS = [0.9, 1.0]  # thresholds for time-to-CIR columns in the table
+CIR_LEVELS = [0.9]       # time-to-CIR thresholds (1.0 is asymptotic -> use Final CIR)
 
 # REPLACE ME: replace <sampler> with cone or helix, and drop the REPLACE_ME_
 # prefix, once the full-scale runs finish. Real names come from the experiment
@@ -318,14 +318,12 @@ for label, prefix in RUNS:
     cir_r, df_t_r = compute_cir_timeseries(bdir, M_COMPARE)
     ct = cir_r["CIR_total"]
     overlay.append((label, ct))
-    rows.append({
-        "Run": label,
-        "Final CIR_total": round(float(ct.iloc[-1]), 3),
-        "t @ CIR>=0.9 (s)": round(time_to_threshold(ct, 0.9), 1),
-        "t @ CIR=1.0 (s)": round(time_to_threshold(ct, 1.0), 1),
-        "Duration (s)": round(float(ct.index[-1]), 1),
-        "bag": bdir.name,
-    })
+    row = {"Run": label, "Final CIR_total": round(float(ct.iloc[-1]), 4)}
+    for lvl in CIR_LEVELS:                                   # time-to-threshold column(s)
+        row[f"t @ CIR>={lvl} (s)"] = round(time_to_threshold(ct, lvl), 1)
+    row["End time (s)"] = round(float(ct.index[-1]), 1)      # mission completion time
+    row["bag"] = bdir.name
+    rows.append(row)
     if PER_RUN_PLOTS:
         plot_cir(cir_r, bdir.name)
         xr, yr = extract_xy_map(bdir)
