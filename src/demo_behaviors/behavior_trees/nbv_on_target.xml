@@ -89,7 +89,7 @@
 
             <!-- Finalize reconstruction for this target, returning BOTH the Marching
                  Cubes mesh and the ROI-clipped surface point cloud. The point cloud has
-                 no MC triangulation, so it cannot fragment on sparse returns -- useful as
+                 no MC triangulation, so it cannot fragment on sparse returns useful as
                  a fallback view when the mesh comes out patchy at long standoff. -->
             <ConcludePolicy return_pointcloud="true" return_mesh="true"
                             scene_mesh="{object_mesh}" roi_cloud="{object_cloud}"/>
@@ -97,7 +97,8 @@
             <!-- Save the reconstructed mesh to disk under this run's reconstruction_dir
                  (seeded onto the blackboard by run_bt from the launch parameter, so it
                  matches the bag's run label). Named by target id. SaveModelToFile creates
-                 the directory and picks the format from the file extension (.ply/.stl/.obj). -->
+                 the directory and picks the format from the file extension (.ply/.stl for a
+                 mesh, .pcd for a cloud; .obj is not supported by savePolygonFile on PCL 1.12). -->
             <Script code="mesh_path := reconstruction_dir .. '/target_' .. current_ID .. '.ply'"/>
             <SaveModelToFile file_path="{mesh_path}" mesh="{object_mesh}" overwrite="true"/>
 
