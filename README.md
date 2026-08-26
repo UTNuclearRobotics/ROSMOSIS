@@ -1,6 +1,9 @@
 # ROSMOSIS
 
-**Robot Operating System — Multiple Object Surface Inspection Survey** — a ROS 2 Humble simulation workspace for UUV-based NBV inspection and Bayesian search missions using BT.cpp v4 behavior trees.
+**Robot Operating System — Multiple Object Surface Inspection Survey**: a ROS 2 Humble simulation workspace for UUV-based NBV inspection and Bayesian search missions using BT.cpp v4 behavior trees.
+
+Supporting code for the MS thesis *Kinematics-Aware Next-Best-View Planning for Autonomous Underwater Vehicles* by Talal Ayman.
+
 
 The system combines:
 - Dubins-path vehicle simulation with idle drift dynamics
